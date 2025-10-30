@@ -68,6 +68,12 @@ public abstract class Unit : Entity
     [Tooltip("Audio source for combat sounds")]
     private AudioSource audioSource;
 
+/// Last unit that interacted with this unit.
+public Unit lastInteraction;
+
+/// Ticks since last interaction (0 = this tick).
+public int lastInteractionAge = 0;
+
     // Internal state
     protected int spawnDelay = 0;
 
@@ -667,3 +673,4 @@ public abstract class Unit : Entity
     #endregion
 
 }
+
