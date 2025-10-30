@@ -117,6 +117,10 @@ public int lastInteractionAge = 0;
     public virtual void TimerStep()
     {
         // Override in subclasses for pre-movement logic
+        if (lastInteraction != null)
+        {
+            lastInteractionAge++;
+        }
     }
 
     /// <summary>
@@ -673,5 +677,6 @@ public int lastInteractionAge = 0;
     #endregion
 
 }
+
 
 
