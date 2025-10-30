@@ -313,7 +313,7 @@ public int lastInteractionAge = 0;
         StartCoroutine(AttackAnimationCoroutine());
     }
 
-    private System.Collections.IEnumerator AttackAnimationCoroutine()
+    protected virtual System.Collections.IEnumerator AttackAnimationCoroutine()
     {
         Vector3 originalScale = transform.localScale;
         Vector3 targetScale = originalScale * 1.25f;
@@ -673,4 +673,5 @@ public int lastInteractionAge = 0;
     #endregion
 
 }
+
 
