@@ -5,14 +5,17 @@ using System.Linq;
 /// <summary>
 /// Base class for all NPCs/Mobs with combat AI.
 /// Matches SDK's Mob.ts implementation.
-/// SDK Reference: Mob.ts
 /// 
-/// KEY BEHAVIORS:
-/// - Multiple weapons (switches between melee/ranged/magic)
-/// - Movement AI (chases player, avoids corners)
-/// - Attack style selection
-/// - Line of sight tracking
-/// - Auto-aggro when attacked
+/// KEY CONCEPTS:
+/// - Mobs have STATS (strength, range, magic) that affect damage
+/// - Mobs have WEAPONS that define range, speed, and calculate damage
+/// - Mobs switch between weapons by changing attackStyle
+/// 
+/// SETUP:
+/// 1. Create GameObject with Mob component
+/// 2. Set stats in Inspector or code
+/// 3. Create weapons in Start() or assign via Inspector
+/// 4. Override AttackStyleForNewAttack() to control attack patterns
 /// </summary>
 public class Mob : Unit
 {
@@ -22,19 +25,59 @@ public class Mob : Unit
     [Tooltip("Display name of this mob")]
     public string mobName = "Unknown Mob";
 
-    [Header("Weapons (Assign via Inspector)")]
-    [Tooltip("Melee weapon (slash/crush/stab styles)")]
-    public Weapon meleeWeapon;
+    // Note: gridPosition is inherited from Entity base class
+    // Add context menu for position syncing
+    [ContextMenu("Sync Grid Position from Transform")]
+    public void SyncGridPositionFromTransform()
+    {
+        if (GridManager.Instance != null)
+        {
+            // Convert world position to grid coordinates
+            gridPosition = GridManager.Instance.WorldToGrid(transform.position);
+            Debug.Log($"[MOB] Updated grid position to {gridPosition} from transform position {transform.position}");
+        }
+        else
+        {
+            // Fallback if no GridManager (rough conversion)
+            gridPosition = new Vector2Int(
+                Mathf.FloorToInt(transform.position.x),
+                Mathf.FloorToInt(transform.position.z)
+            );
+            Debug.LogWarning("[MOB] No GridManager found, using rough conversion");
+        }
+    }
 
-    [Tooltip("Ranged weapon")]
-    public Weapon rangedWeapon;
+    [Header("Combat Stats - Affects Damage Calculations")]
+    [Tooltip("Attack level (1-99). Affects MELEE accuracy")]
+    public int attackLevel = 75;
 
-    [Tooltip("Magic weapon")]
-    public Weapon magicWeapon;
+    [Tooltip("Strength level (1-99). Affects MELEE max hit")]
+    public int strengthLevel = 75;
+
+    [Tooltip("Defence level (1-99). Reduces chance to be hit")]
+    public int defenceLevel = 50;
+
+    [Tooltip("Range level (1-99). Affects RANGED accuracy AND max hit")]
+    public int rangeLevel = 75;
+
+    [Tooltip("Magic level (1-99). Affects MAGIC accuracy")]
+    public int magicLevel = 75;
+
+    [Tooltip("Hitpoints. Total HP of this mob")]
+    public int hitpointsLevel = 60;
 
     [Header("Combat Behavior")]
     [Tooltip("Can this mob be attacked by the player?")]
     public bool canBeAttacked = true;
+
+    [Tooltip("Can this mob move? Unchecked = stationary")]
+    public bool canMove = true;
+
+    [Tooltip("Automatically aggro the player on spawn?")]
+    public bool autoAggroPlayer = false;
+
+    [Tooltip("Delay in ticks before auto-aggro activates")]
+    public int autoAggroDelay = 2;
 
     [Tooltip("Show attack indicators for debugging")]
     public bool showAttackIndicators = true;
@@ -47,10 +90,11 @@ public class Mob : Unit
     /// Weapons mapped by attack style name.
     /// SDK Reference: Mob.weapons in Mob.ts
     /// </summary>
-    protected Dictionary<string, Weapon> weapons = new Dictionary<string, Weapon>();
+    public Dictionary<string, Weapon> weapons = new Dictionary<string, Weapon>();
 
     /// <summary>
     /// Current attack style being used.
+    /// Options: "slash", "crush", "stab", "range", "magic"
     /// SDK Reference: Mob.attackStyle in Mob.ts
     /// </summary>
     public string attackStyle = "slash";
@@ -67,6 +111,10 @@ public class Mob : Unit
     /// </summary>
     public bool hadLOS = false;
 
+    // Auto-aggro tracking
+    private int aggroTimer = 0;
+    private bool hasAggroed = false;
+
     #endregion
 
     #region Unity Lifecycle
@@ -81,12 +129,9 @@ public class Mob : Unit
 
         // Mobs auto-retaliate when attacked
         autoRetaliate = true;
-
-        // Build weapons dictionary from Inspector assignments
-        BuildWeaponsDictionary();
     }
 
-    void Start()
+    protected virtual void Start()
     {
         // Register with GridManager
         if (GridManager.Instance != null)
@@ -99,38 +144,67 @@ public class Mob : Unit
         {
             gameObject.AddComponent<ProjectileRenderer>();
         }
+
+        // Add HitsplatRenderer for damage numbers (if you have this component)
+        if (GetComponent<HitsplatRenderer>() == null)
+        {
+            gameObject.AddComponent<HitsplatRenderer>();
+        }
+
+        // Initialize auto-aggro timer if enabled
+        if (autoAggroPlayer)
+        {
+            aggroTimer = autoAggroDelay;
+        }
+
+        // Subclasses should create weapons in Start()
     }
 
     #endregion
 
-    #region Weapons Setup
+    #region Stats Setup
 
     /// <summary>
-    /// Build weapons dictionary from Inspector-assigned weapons.
-    /// SDK Reference: Mob.weapons in Mob.ts (but we populate from Inspector)
+    /// Set base stats from inspector values.
+    /// SDK Reference: Mob.setStats() in Mob.ts lines 78-95
     /// </summary>
-    private void BuildWeaponsDictionary()
+    public override void SetStats()
     {
-        weapons.Clear();
-
-        // Add melee weapon under all melee styles
-        if (meleeWeapon != null)
+        // Use inspector values or default to 99s
+        stats = new UnitStats
         {
-            weapons["slash"] = meleeWeapon;
-            weapons["crush"] = meleeWeapon;
-            weapons["stab"] = meleeWeapon;
-        }
+            attack = attackLevel > 0 ? attackLevel : 99,
+            strength = strengthLevel > 0 ? strengthLevel : 99,
+            defence = defenceLevel > 0 ? defenceLevel : 99,
+            range = rangeLevel > 0 ? rangeLevel : 99,
+            magic = magicLevel > 0 ? magicLevel : 99,
+            hitpoint = hitpointsLevel > 0 ? hitpointsLevel : 99,
+            prayer = 0 // NPCs don't use prayer
+        };
 
-        // Add ranged weapon
-        if (rangedWeapon != null)
-        {
-            weapons["range"] = rangedWeapon;
-        }
+        currentStats = stats.Clone();
+    }
 
-        // Add magic weapon
-        if (magicWeapon != null)
+    #endregion
+
+    #region Timer Step Override
+
+    /// <summary>
+    /// Handle auto-aggro timer.
+    /// </summary>
+    public override void TimerStep()
+    {
+        base.TimerStep();
+
+        // Handle auto-aggro countdown
+        if (autoAggroPlayer && !hasAggroed && aggroTimer > 0)
         {
-            weapons["magic"] = magicWeapon;
+            aggroTimer--;
+            if (aggroTimer <= 0)
+            {
+                SetAggressiveToPlayer();
+                hasAggroed = true;
+            }
         }
     }
 
@@ -224,11 +298,11 @@ public class Mob : Unit
     /// </summary>
     public virtual string AttackStyleForNewAttack()
     {
-        // Default: use whatever is available
-        if (meleeWeapon != null) return "slash";
-        if (rangedWeapon != null) return "range";
-        if (magicWeapon != null) return "magic";
-        
+        // Default: use first available weapon
+        if (weapons.ContainsKey("slash")) return "slash";
+        if (weapons.ContainsKey("range")) return "range";
+        if (weapons.ContainsKey("magic")) return "magic";
+
         return "slash"; // Fallback
     }
 
@@ -252,13 +326,6 @@ public class Mob : Unit
     /// <summary>
     /// Calculate next tile to move toward player.
     /// SDK Reference: Mob.getNextMovementStep() in Mob.ts lines 103-153
-    /// 
-    /// LOGIC:
-    /// 1. Calculate direction toward player (sign of dx/dy)
-    /// 2. If player is UNDER mob → Random movement
-    /// 3. If can reach diagonally → Move diagonal
-    /// 4. Otherwise → Move on one axis only (allows corner safespotting)
-    /// 5. No movement if just used melee special (attackDelay > attackSpeed)
     /// </summary>
     protected Vector2Int GetNextMovementStep()
     {
@@ -274,7 +341,6 @@ public class Mob : Unit
                                     aggro.gridPosition.x, aggro.gridPosition.y, 1))
         {
             // Player is under mob - do random movement to get unstuck
-            // SDK Reference: Mob.ts lines 113-130
             if (aggro.lastInteraction == this && aggro.lastInteractionAge == 0)
             {
                 // Cannot move if player just interacted with this mob
@@ -297,12 +363,10 @@ public class Mob : Unit
         {
             // If moving diagonally would place us on player, move only on Y axis
             // This allows corner safespotting
-            // SDK Reference: Mob.ts lines 131-133
             dy = gridPosition.y;
         }
 
         // No movement right after melee special attack (8 ticks)
-        // SDK Reference: Mob.ts lines 135-139
         if (attackDelay > GetAttackSpeed())
         {
             dx = gridPosition.x;
@@ -310,70 +374,6 @@ public class Mob : Unit
         }
 
         return new Vector2Int(dx, dy);
-    }
-
-    /// <summary>
-    /// Get tiles to check for X-axis movement.
-    /// SDK Reference: Mob.getXMovementTiles() in Mob.ts lines 155-170
-    /// </summary>
-    protected List<Vector2Int> GetXMovementTiles(int xOff, int yOff)
-    {
-        List<Vector2Int> tiles = new List<Vector2Int>();
-
-        // Determine Y range based on yOff
-        int start = yOff == -1 ? -1 : 0;
-        int end = yOff == 1 ? size + 1 : size;
-
-        if (xOff == -1)
-        {
-            // Moving west
-            for (int i = start; i < end; i++)
-            {
-                tiles.Add(new Vector2Int(gridPosition.x - 1, gridPosition.y - i));
-            }
-        }
-        else if (xOff == 1)
-        {
-            // Moving east
-            for (int i = start; i < end; i++)
-            {
-                tiles.Add(new Vector2Int(gridPosition.x + size, gridPosition.y - i));
-            }
-        }
-
-        return tiles;
-    }
-
-    /// <summary>
-    /// Get tiles to check for Y-axis movement.
-    /// SDK Reference: Mob.getYMovementTiles() in Mob.ts lines 172-187
-    /// </summary>
-    protected List<Vector2Int> GetYMovementTiles(int xOff, int yOff)
-    {
-        List<Vector2Int> tiles = new List<Vector2Int>();
-
-        // Determine X range based on xOff
-        int start = xOff == -1 ? -1 : 0;
-        int end = xOff == 1 ? size + 1 : size;
-
-        if (yOff == -1)
-        {
-            // Moving south
-            for (int i = start; i < end; i++)
-            {
-                tiles.Add(new Vector2Int(gridPosition.x + i, gridPosition.y + 1));
-            }
-        }
-        else if (yOff == 1)
-        {
-            // Moving north
-            for (int i = start; i < end; i++)
-            {
-                tiles.Add(new Vector2Int(gridPosition.x + i, gridPosition.y - size));
-            }
-        }
-
-        return tiles;
     }
 
     /// <summary>
@@ -391,61 +391,67 @@ public class Mob : Unit
         // Update line of sight
         SetHasLOS();
 
+        // Check if movement is enabled
+        if (!canMove)
+            return;
+
         // Don't move if can't move or no aggro
         if (!CanMove() || aggro == null)
             return;
 
         // Get target tile
         Vector2Int targetTile = GetNextMovementStep();
-        
-        int xOff = targetTile.x - gridPosition.x;
-        int yOff = gridPosition.y - targetTile.y; // Note: inverted for OSRS coords
 
-        // Get tiles needed for movement
-        List<Vector2Int> xTiles = GetXMovementTiles(xOff, yOff);
-        List<Vector2Int> yTiles = GetYMovementTiles(xOff, yOff);
-
-        // Check if tiles are walkable
-        // CRITICAL: Pass 'this' so mob checks collision with other mobs
-        bool xSpace = xTiles.All(tile => 
-            Pathing.CanTileBePathedTo(tile, 1, this));
-        bool ySpace = yTiles.All(tile => 
-            Pathing.CanTileBePathedTo(tile, 1, this));
-
-        bool both = xSpace && ySpace;
-
-        // If diagonal movement blocked, try single-axis
-        if (!both)
+        // Check if we can move there
+        if (targetTile != gridPosition)
         {
-            xTiles = GetXMovementTiles(xOff, 0);
-            xSpace = xTiles.All(tile => 
-                Pathing.CanTileBePathedTo(tile, 1, this));
-
-            if (!xSpace)
+            if (Collision.IsTileWalkable(targetTile, size, this))
             {
-                yTiles = GetYMovementTiles(0, yOff);
-                ySpace = yTiles.All(tile => 
-                    Pathing.CanTileBePathedTo(tile, 1, this));
+                gridPosition = targetTile;
+            }
+        }
+    }
+
+    #endregion
+
+    #region Auto-Aggro System
+
+    /// <summary>
+    /// Make this mob aggressive toward the player.
+    /// Searches for player by tag first, then by component.
+    /// </summary>
+    public void SetAggressiveToPlayer()
+    {
+        // Find the player - try by tag first
+        GameObject playerObj = GameObject.FindWithTag("Player");
+
+        // If no tag, try finding by Player component
+        if (playerObj == null)
+        {
+            Player playerComponent = FindObjectOfType<Player>();
+            if (playerComponent != null)
+            {
+                playerObj = playerComponent.gameObject;
             }
         }
 
-        // Execute movement
-        if (both)
+        if (playerObj != null)
         {
-            // Can move diagonally
-            gridPosition = targetTile;
+            Player player = playerObj.GetComponent<Player>();
+            if (player != null)
+            {
+                SetAggro(player);
+                Debug.Log($"[MOB] {mobName} now aggressive to player!");
+            }
+            else
+            {
+                Debug.LogWarning($"[MOB] Found player object but no Player component!");
+            }
         }
-        else if (xSpace)
+        else
         {
-            // Can only move on X axis
-            gridPosition.x = targetTile.x;
+            Debug.LogWarning($"[MOB] Could not find player in scene!");
         }
-        else if (ySpace)
-        {
-            // Can only move on Y axis
-            gridPosition.y = targetTile.y;
-        }
-        // Else: Can't move at all (blocked)
     }
 
     #endregion
@@ -465,10 +471,6 @@ public class Mob : Unit
 
         // Attempt attack
         AttackIfPossible();
-
-        // Tick down combat timers (handled in base.AttackStep)
-        // frozen--;
-        // stunned--;
     }
 
     /// <summary>
@@ -486,22 +488,10 @@ public class Mob : Unit
         // Determine attack style for this attack
         attackStyle = AttackStyleForNewAttack();
 
-        // Check if weapon is area attack (doesn't require LOS)
-        bool weaponIsAreaAttack = false;
-        if (weapons.ContainsKey(attackStyle) && weapons[attackStyle] != null)
-        {
-            // Area attacks can hit even if player is under mob
-            weaponIsAreaAttack = false; // We don't have area attacks yet
-        }
-
         // Check if player is under mob
-        bool isUnderAggro = false;
-        if (!weaponIsAreaAttack)
-        {
-            isUnderAggro = Collision.CollisionMath(
-                gridPosition.x, gridPosition.y, size,
-                aggro.gridPosition.x, aggro.gridPosition.y, 1);
-        }
+        bool isUnderAggro = Collision.CollisionMath(
+            gridPosition.x, gridPosition.y, size,
+            aggro.gridPosition.x, aggro.gridPosition.y, 1);
 
         // Reset feedback
         attackFeedback = AttackIndicator.NONE;
@@ -538,37 +528,7 @@ public class Mob : Unit
 
     #endregion
 
-    #region Animation
-
-    /// <summary>
-    /// Attack animation: pulse to 120% scale.
-    /// SDK Reference: Not in SDK (Unity-specific visual)
-    /// </summary>
-    protected override System.Collections.IEnumerator AttackAnimationCoroutine()
-    {
-        Vector3 originalScale = transform.localScale;
-        Vector3 targetScale = originalScale * 1.2f; // 120% pulse
-
-        // Scale up over 0.15 seconds
-        float elapsed = 0;
-        while (elapsed < 0.15f)
-        {
-            elapsed += Time.deltaTime;
-            transform.localScale = Vector3.Lerp(originalScale, targetScale, elapsed / 0.15f);
-            yield return null;
-        }
-
-        // Scale down over 0.15 seconds
-        elapsed = 0;
-        while (elapsed < 0.15f)
-        {
-            elapsed += Time.deltaTime;
-            transform.localScale = Vector3.Lerp(targetScale, originalScale, elapsed / 0.15f);
-            yield return null;
-        }
-
-        transform.localScale = originalScale;
-    }
+    #region Death Animation
 
     /// <summary>
     /// Death animation: fade to 10% scale.
@@ -577,37 +537,22 @@ public class Mob : Unit
     public override void Dead()
     {
         base.Dead();
-        
-        // Start death fade animation
         StartCoroutine(DeathFadeCoroutine());
     }
 
     private System.Collections.IEnumerator DeathFadeCoroutine()
     {
         Vector3 originalScale = transform.localScale;
-        Vector3 targetScale = originalScale * 0.1f; // 10% scale
-
-        float duration = GetDeathAnimationLength() * 0.6f; // Ticks to seconds
+        Vector3 targetScale = originalScale * 0.1f;
+        float duration = GetDeathAnimationLength() * 0.6f;
         float elapsed = 0;
 
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
-            float percent = elapsed / duration;
-            transform.localScale = Vector3.Lerp(originalScale, targetScale, percent);
-            
-            // Also fade out children (if they have renderers)
-            foreach (Renderer renderer in GetComponentsInChildren<Renderer>())
-            {
-                Color color = renderer.material.color;
-                color.a = 1f - percent; // Fade out alpha
-                renderer.material.color = color;
-            }
-            
+            transform.localScale = Vector3.Lerp(originalScale, targetScale, elapsed / duration);
             yield return null;
         }
-
-        transform.localScale = targetScale;
     }
 
     #endregion
