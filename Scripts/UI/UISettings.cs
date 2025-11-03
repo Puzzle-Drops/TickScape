@@ -36,6 +36,9 @@ public class UISettings : MonoBehaviour
     public bool playsAudio = true;
     public bool playsAreaAudio = true;
     public bool metronome = false;
+    
+    [Header("Camera Settings")]
+    public bool wasdCamera = false;
 
     [Header("UI State")]
     [Tooltip("Is a key currently being bound?")]
@@ -220,6 +223,7 @@ public class UISettings : MonoBehaviour
         PlayerPrefs.SetInt("UI_PlaysAudio", playsAudio ? 1 : 0);
         PlayerPrefs.SetInt("UI_PlaysAreaAudio", playsAreaAudio ? 1 : 0);
         PlayerPrefs.SetInt("UI_Metronome", metronome ? 1 : 0);
+        PlayerPrefs.SetInt("UI_WasdCamera", wasdCamera ? 1 : 0);
 
         // Save prayer and spell positions as serialized strings
         SavePrayerPositions();
@@ -281,6 +285,7 @@ public class UISettings : MonoBehaviour
         playsAudio = PlayerPrefs.GetInt("UI_PlaysAudio", 1) == 1;
         playsAreaAudio = PlayerPrefs.GetInt("UI_PlaysAreaAudio", 1) == 1;
         metronome = PlayerPrefs.GetInt("UI_Metronome", 0) == 1;
+        wasdCamera = PlayerPrefs.GetInt("UI_WasdCamera", 0) == 1;
 
         // Load prayer and spell positions
         LoadPrayerPositions();
@@ -383,4 +388,5 @@ public class UISettings : MonoBehaviour
     {
         LoadSettings();
     }
+
 }
