@@ -4,12 +4,13 @@ using System.Linq;
 
 /// <summary>
 /// Base class for all NPCs/Mobs with combat AI.
-/// Matches SDK's Mob.ts implementation.
+/// Matches SDK's Mob.ts implementation with EXACT movement logic.
 /// 
 /// KEY CONCEPTS:
 /// - Mobs have STATS (strength, range, magic) that affect damage
 /// - Mobs have WEAPONS that define range, speed, and calculate damage
 /// - Mobs switch between weapons by changing attackStyle
+/// - Mobs use 3-STAGE MOVEMENT FALLBACK (diagonal → X-only → Y-only)
 /// 
 /// SETUP:
 /// 1. Create GameObject with Mob component
@@ -82,6 +83,10 @@ public class Mob : Unit
     [Tooltip("Show attack indicators for debugging")]
     public bool showAttackIndicators = true;
 
+    [Header("Movement Debug Visualization")]
+    [Tooltip("Show movement tile checks in Scene view (green = checking, red = blocked)")]
+    public bool debugMovement = false;
+
     #endregion
 
     #region Mob State
@@ -110,6 +115,12 @@ public class Mob : Unit
     /// SDK Reference: Mob.hadLOS in Mob.ts
     /// </summary>
     public bool hadLOS = false;
+
+    /// <summary>
+    /// Spawn delay counter. Mob doesn't move until this reaches 0.
+    /// SDK Reference: Unit.age in Unit.ts
+    /// </summary>
+    private int age = 0;
 
     // Auto-aggro tracking
     private int aggroTimer = 0;
@@ -155,6 +166,7 @@ public class Mob : Unit
         if (autoAggroPlayer)
         {
             aggroTimer = autoAggroDelay;
+            age = autoAggroDelay; // Also set spawn delay
         }
 
         // Subclasses should create weapons in Start()
@@ -190,11 +202,16 @@ public class Mob : Unit
     #region Timer Step Override
 
     /// <summary>
-    /// Handle auto-aggro timer.
+    /// Handle spawn delay and auto-aggro timer.
+    /// SDK Reference: Mob.timerStep() in Mob.ts + Unit.movementStep() lines 195-198
     /// </summary>
     public override void TimerStep()
     {
         base.TimerStep();
+
+        // SDK spawn delay system
+        // Mob doesn't move/act until age reaches 0
+        age--;
 
         // Handle auto-aggro countdown
         if (autoAggroPlayer && !hasAggroed && aggroTimer > 0)
@@ -205,6 +222,313 @@ public class Mob : Unit
                 SetAggressiveToPlayer();
                 hasAggroed = true;
             }
+        }
+    }
+
+    #endregion
+
+    #region Movement System - SDK EXACT IMPLEMENTATION
+
+    /// <summary>
+    /// Get tiles along the X edge that need to be clear for X movement.
+    /// Handles multi-tile mobs (size > 1).
+    /// SDK Reference: Mob.getXMovementTiles() in Mob.ts lines 312-333
+    /// 
+    /// IMPORTANT: For a 2x2 mob moving east, we check 2 tiles along the eastern edge.
+    /// The tiles checked depend on if we're also moving diagonally.
+    /// </summary>
+    /// <param name="xOff">X movement offset (-1 = west, 0 = none, 1 = east)</param>
+    /// <param name="yOff">Y movement offset (-1 = north, 0 = none, 1 = south)</param>
+    private List<Vector2Int> GetXMovementTiles(int xOff, int yOff)
+    {
+        List<Vector2Int> xTiles = new List<Vector2Int>();
+
+        // If not moving in X direction, return empty
+        if (xOff == 0)
+            return xTiles;
+
+        // Adjust Y range if moving diagonally
+        int start = yOff == -1 ? -1 : 0;
+        int end = yOff == 1 ? size + 1 : size;
+
+        if (xOff == -1)
+        {
+            // Moving WEST - check tiles along western edge
+            for (int i = start; i < end; i++)
+            {
+                xTiles.Add(new Vector2Int(
+                    gridPosition.x - 1,
+                    gridPosition.y - i
+                ));
+            }
+        }
+        else if (xOff == 1)
+        {
+            // Moving EAST - check tiles along eastern edge
+            for (int i = start; i < end; i++)
+            {
+                xTiles.Add(new Vector2Int(
+                    gridPosition.x + size,
+                    gridPosition.y - i
+                ));
+            }
+        }
+
+        return xTiles;
+    }
+
+    /// <summary>
+    /// Get tiles along the Y edge that need to be clear for Y movement.
+    /// Handles multi-tile mobs (size > 1).
+    /// SDK Reference: Mob.getYMovementTiles() in Mob.ts lines 335-363
+    /// 
+    /// COORDINATE SYSTEM NOTE:
+    /// - Y increases going SOUTH (down on screen)
+    /// - yOff = -1 means moving to LOWER Y (NORTH)
+    /// - yOff = 1 means moving to HIGHER Y (SOUTH)
+    /// </summary>
+    /// <param name="xOff">X movement offset (-1 = west, 0 = none, 1 = east)</param>
+    /// <param name="yOff">Y movement offset (-1 = north, 0 = none, 1 = south)</param>
+    private List<Vector2Int> GetYMovementTiles(int xOff, int yOff)
+    {
+        List<Vector2Int> yTiles = new List<Vector2Int>();
+
+        // If not moving in Y direction, return empty
+        if (yOff == 0)
+            return yTiles;
+
+        // Adjust X range if moving diagonally
+        int start = xOff == -1 ? -1 : 0;
+        int end = xOff == 1 ? size + 1 : size;
+
+        if (yOff == -1)
+        {
+            // Moving NORTH (to lower Y values)
+            for (int i = start; i < end; i++)
+            {
+                yTiles.Add(new Vector2Int(
+                    gridPosition.x + i,
+                    gridPosition.y - size  // Northern edge
+                ));
+            }
+        }
+        else if (yOff == 1)
+        {
+            // Moving SOUTH (to higher Y values)
+            for (int i = start; i < end; i++)
+            {
+                yTiles.Add(new Vector2Int(
+                    gridPosition.x + i,
+                    gridPosition.y + 1  // Southern edge
+                ));
+            }
+        }
+
+        return yTiles;
+    }
+
+    /// <summary>
+    /// Check if all tiles in a list are walkable.
+    /// Equivalent to SDK's every() function.
+    /// </summary>
+    private bool AllTilesWalkable(List<Vector2Int> tiles)
+    {
+        if (tiles.Count == 0)
+            return true; // No tiles to check = movement is valid
+
+        foreach (Vector2Int tile in tiles)
+        {
+            if (!Collision.IsTileWalkable(tile, 1, this))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Calculate next tile to move toward target.
+    /// SDK Reference: Mob.getNextMovementStep() in Mob.ts lines 103-153
+    /// </summary>
+    protected Vector2Int GetNextMovementStep()
+    {
+        if (aggro == null)
+            return gridPosition;
+
+        // Calculate direction toward target
+        int dx = gridPosition.x + System.Math.Sign(aggro.gridPosition.x - gridPosition.x);
+        int dy = gridPosition.y + System.Math.Sign(aggro.gridPosition.y - gridPosition.y);
+
+        // Check if target is under the mob
+        if (Collision.CollisionMath(gridPosition.x, gridPosition.y, size,
+                                    aggro.gridPosition.x, aggro.gridPosition.y, 1))
+        {
+            // Target is under mob - do random movement to get unstuck
+            if (aggro.lastInteraction == this && aggro.lastInteractionAge == 0)
+            {
+                // Cannot move if target just interacted with this mob
+                return gridPosition;
+            }
+
+            // Random X or Y movement
+            if (RandomHelper.Get() < 0.5f)
+            {
+                dy = gridPosition.y;
+                dx = gridPosition.x + (RandomHelper.Get() < 0.5f ? 1 : -1);
+            }
+            else
+            {
+                dx = gridPosition.x;
+                dy = gridPosition.y + (RandomHelper.Get() < 0.5f ? 1 : -1);
+            }
+        }
+        else if (Collision.CollisionMath(dx, dy, size, aggro.gridPosition.x, aggro.gridPosition.y, 1))
+        {
+            // If moving diagonally would place us on target, move only on Y axis
+            // This allows corner safespotting
+            dy = gridPosition.y;
+        }
+
+        // No movement right after melee special attack (8 ticks)
+        if (attackDelay > GetAttackSpeed())
+        {
+            dx = gridPosition.x;
+            dy = gridPosition.y;
+        }
+
+        return new Vector2Int(dx, dy);
+    }
+
+    /// <summary>
+    /// Execute mob movement with 3-STAGE FALLBACK SYSTEM.
+    /// This is the CORE of OSRS mob AI movement.
+    /// SDK Reference: Mob.movementStep() in Mob.ts lines 189-270
+    /// 
+    /// MOVEMENT ALGORITHM:
+    /// 1. Try DIAGONAL: Check both X and Y tiles → Move diagonally
+    /// 2. If diagonal blocked, try X-ONLY → Move horizontally
+    /// 3. If X blocked, try Y-ONLY → Move vertically
+    /// 
+    /// This ensures mobs ALWAYS try to close distance even if direct path is blocked.
+    /// </summary>
+    public override void MovementStep()
+    {
+        if (IsDying())
+            return;
+
+        // Process incoming attacks first
+        ProcessIncomingAttacks();
+
+        // SDK spawn delay - don't move until age reaches 0
+        if (age > 0)
+            return;
+
+        // Save position for visual interpolation
+        perceivedLocation = new Vector2(gridPosition.x, gridPosition.y);
+
+        // Update line of sight
+        SetHasLOS();
+
+        // Check if movement is enabled
+        if (!canMove)
+            return;
+
+        // Don't move if can't move or no aggro
+        if (!CanMove() || aggro == null)
+            return;
+
+        // ===== STAGE 0: Get desired target tile =====
+        Vector2Int targetTile = GetNextMovementStep();
+
+        // Calculate movement offsets
+        int xOff = targetTile.x - gridPosition.x;
+        int yOff = gridPosition.y - targetTile.y;  // Note: SDK inverts this
+
+        // ===== STAGE 1: Try DIAGONAL movement (both X and Y) =====
+        List<Vector2Int> xTiles = GetXMovementTiles(xOff, yOff);
+        List<Vector2Int> yTiles = GetYMovementTiles(xOff, yOff);
+
+        bool xSpace = AllTilesWalkable(xTiles);
+        bool ySpace = AllTilesWalkable(yTiles);
+        bool both = xSpace && ySpace;
+
+        // Debug visualization - DIAGONAL attempt
+        if (debugMovement && xTiles.Count > 0 && yTiles.Count > 0)
+        {
+            Color debugColor = both ? Color.green : Color.red;
+            foreach (var tile in xTiles)
+            {
+                Collision.DrawCollisionBounds(tile, 1, debugColor, 0.6f);
+            }
+            foreach (var tile in yTiles)
+            {
+                Collision.DrawCollisionBounds(tile, 1, debugColor, 0.6f);
+            }
+        }
+
+        // ===== STAGE 2: If diagonal blocked, try FALLBACK =====
+        if (!both)
+        {
+            // Try X-only movement
+            xTiles = GetXMovementTiles(xOff, 0);
+            xSpace = AllTilesWalkable(xTiles);
+
+            // Debug visualization - X-only attempt
+            if (debugMovement && xTiles.Count > 0)
+            {
+                Color debugColor = xSpace ? Color.green : Color.yellow;
+                foreach (var tile in xTiles)
+                {
+                    Collision.DrawCollisionBounds(tile, 1, debugColor, 0.6f);
+                }
+            }
+
+            if (!xSpace)
+            {
+                // X is blocked, try Y-only movement
+                yTiles = GetYMovementTiles(0, yOff);
+                ySpace = AllTilesWalkable(yTiles);
+
+                // Debug visualization - Y-only attempt
+                if (debugMovement && yTiles.Count > 0)
+                {
+                    Color debugColor = ySpace ? Color.green : Color.magenta;
+                    foreach (var tile in yTiles)
+                    {
+                        Collision.DrawCollisionBounds(tile, 1, debugColor, 0.6f);
+                    }
+                }
+            }
+        }
+
+        // ===== STAGE 3: Execute movement in valid direction(s) =====
+        if (both)
+        {
+            // Diagonal movement
+            gridPosition.x = targetTile.x;
+            gridPosition.y = targetTile.y;
+            if (debugMovement)
+                Debug.Log($"[MOB] {mobName} moved DIAGONALLY to {gridPosition}");
+        }
+        else if (xSpace)
+        {
+            // X-only movement
+            gridPosition.x = targetTile.x;
+            if (debugMovement)
+                Debug.Log($"[MOB] {mobName} moved HORIZONTALLY (X-only) to {gridPosition}");
+        }
+        else if (ySpace)
+        {
+            // Y-only movement
+            gridPosition.y = targetTile.y;
+            if (debugMovement)
+                Debug.Log($"[MOB] {mobName} moved VERTICALLY (Y-only) to {gridPosition}");
+        }
+        else
+        {
+            // All movement blocked
+            if (debugMovement)
+                Debug.Log($"[MOB] {mobName} CANNOT MOVE - all directions blocked");
         }
     }
 
@@ -321,99 +645,6 @@ public class Mob : Unit
 
     #endregion
 
-    #region Movement AI
-
-    /// <summary>
-    /// Calculate next tile to move toward player.
-    /// SDK Reference: Mob.getNextMovementStep() in Mob.ts lines 103-153
-    /// </summary>
-    protected Vector2Int GetNextMovementStep()
-    {
-        if (aggro == null)
-            return gridPosition;
-
-        // Calculate direction toward player
-        int dx = gridPosition.x + System.Math.Sign(aggro.gridPosition.x - gridPosition.x);
-        int dy = gridPosition.y + System.Math.Sign(aggro.gridPosition.y - gridPosition.y);
-
-        // Check if player is under the mob
-        if (Collision.CollisionMath(gridPosition.x, gridPosition.y, size,
-                                    aggro.gridPosition.x, aggro.gridPosition.y, 1))
-        {
-            // Player is under mob - do random movement to get unstuck
-            if (aggro.lastInteraction == this && aggro.lastInteractionAge == 0)
-            {
-                // Cannot move if player just interacted with this mob
-                return gridPosition;
-            }
-
-            // Random X or Y movement
-            if (RandomHelper.Get() < 0.5f)
-            {
-                dy = gridPosition.y;
-                dx = gridPosition.x + (RandomHelper.Get() < 0.5f ? 1 : -1);
-            }
-            else
-            {
-                dx = gridPosition.x;
-                dy = gridPosition.y + (RandomHelper.Get() < 0.5f ? 1 : -1);
-            }
-        }
-        else if (Collision.CollisionMath(dx, dy, size, aggro.gridPosition.x, aggro.gridPosition.y, 1))
-        {
-            // If moving diagonally would place us on player, move only on Y axis
-            // This allows corner safespotting
-            dy = gridPosition.y;
-        }
-
-        // No movement right after melee special attack (8 ticks)
-        if (attackDelay > GetAttackSpeed())
-        {
-            dx = gridPosition.x;
-            dy = gridPosition.y;
-        }
-
-        return new Vector2Int(dx, dy);
-    }
-
-    /// <summary>
-    /// Execute mob movement with pathfinding validation.
-    /// SDK Reference: Mob.movementStep() in Mob.ts lines 189-270
-    /// </summary>
-    public override void MovementStep()
-    {
-        if (IsDying())
-            return;
-
-        // Process incoming attacks first
-        ProcessIncomingAttacks();
-
-        // Update line of sight
-        SetHasLOS();
-
-        // Check if movement is enabled
-        if (!canMove)
-            return;
-
-        // Don't move if can't move or no aggro
-        if (!CanMove() || aggro == null)
-            return;
-
-        // Get target tile
-        Vector2Int targetTile = GetNextMovementStep();
-
-        // Check if we can move there
-        if (targetTile != gridPosition)
-        {
-            if (Collision.IsTileWalkable(targetTile, size, this))
-            {
-                gridPosition = targetTile;
-            }
-        }
-    }
-
-    #endregion
-
     #region Auto-Aggro System
 
     /// <summary>
@@ -465,6 +696,10 @@ public class Mob : Unit
     public override void AttackStep()
     {
         base.AttackStep();
+
+        // Don't process attack during spawn delay
+        if (age > 0)
+            return;
 
         if (IsDying())
             return;
