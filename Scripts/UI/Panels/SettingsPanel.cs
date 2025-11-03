@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// Settings panel with audio, UI scale, input delay controls.
+/// Settings panel with volume, UI scale, input delay controls, and checkboxes.
 /// SDK Reference: SettingsControls.ts
 /// </summary>
 public class SettingsPanel : BasePanel
@@ -12,17 +12,13 @@ public class SettingsPanel : BasePanel
     public override bool IsAvailable => true;
     public override bool AppearsOnLeftInMobile => false;
 
-    // Button textures
-    private Texture2D soundTexture;
-    private Texture2D metronomeTexture;
-    private Texture2D wasdTexture;
-    private Texture2D disabledOverlay;
-
     // Slider state
+    private bool isDraggingVolume = false;
     private bool isDraggingPing = false;
     private bool isDraggingUIScale = false;
 
     // Temporary values while dragging (don't apply until mouse up)
+    private float tempVolume = 1.0f;
     private float tempUIScale = 1.0f;
     private int tempPing = 20;
 
@@ -32,39 +28,16 @@ public class SettingsPanel : BasePanel
     // Text styles
     private GUIStyle labelStyle;
     private GUIStyle valueStyle;
+    private GUIStyle checkboxLabelStyle;
 
     public override void Initialize()
     {
         base.Initialize();
 
-        // Load textures
-        soundTexture = TextureLoader.LoadTexture(
-            "UI/Elements/sound_effect_volume",
-            new Color(0.5f, 0.4f, 0.3f),
-            32, 32
-        );
-
-        metronomeTexture = TextureLoader.LoadTexture(
-            "UI/Elements/metronome",
-            new Color(0.6f, 0.5f, 0.4f),
-            32, 32
-        );
-
-        wasdTexture = TextureLoader.LoadTexture(
-            "UI/Elements/wasd",
-            new Color(0.4f, 0.5f, 0.6f),
-            32, 32
-        );
-
-        disabledOverlay = TextureLoader.LoadTexture(
-            "UI/Elements/disabled_option_overlay",
-            new Color(0, 0, 0, 0.5f),
-            32, 32
-        );
-
         // Text styles
         labelStyle = UIFonts.CreateTextStyle(16, UIFonts.YellowText, TextAnchor.MiddleLeft);
         valueStyle = UIFonts.CreateTextStyle(16, UIFonts.YellowText, TextAnchor.MiddleLeft);
+        checkboxLabelStyle = UIFonts.CreateTextStyle(14, UIFonts.YellowText, TextAnchor.MiddleLeft);
     }
 
     public void HandleKeyBinding()
@@ -116,19 +89,20 @@ public class SettingsPanel : BasePanel
         // Update font sizes and fonts
         labelStyle.fontSize = Mathf.RoundToInt(16 * scale);
         valueStyle.fontSize = Mathf.RoundToInt(16 * scale);
+        checkboxLabelStyle.fontSize = Mathf.RoundToInt(14 * scale);
         labelStyle.font = UIFonts.VT323;
         valueStyle.font = UIFonts.VT323;
+        checkboxLabelStyle.font = UIFonts.VT323;
 
-        // === TOP SECTION: Sound Toggles ===
-        // Audio toggle button (20, 20)
-        DrawToggleButton(x, y, scale, 20, 20, soundTexture,
-            UISettings.Instance.playsAudio && UISettings.Instance.playsAreaAudio);
+        // === TOP SECTION: Checkboxes ===
+        // Metronome checkbox (20, 20)
+        DrawCheckbox(x, y, scale, 20, 20, "Metronome", UISettings.Instance.metronome);
 
-        // Metronome toggle button (60, 20) - to the right of audio
-        DrawToggleButton(x, y, scale, 60, 20, metronomeTexture, UISettings.Instance.metronome);
+        // WASD Camera checkbox (20, 40)
+        DrawCheckbox(x, y, scale, 20, 40, "WASD Camera", UISettings.Instance.wasdCamera);
 
-        // WASD camera toggle button (100, 20) - to the right of metronome
-        DrawToggleButton(x, y, scale, 100, 20, wasdTexture, UISettings.Instance.wasdCamera);
+        // === VOLUME SLIDER ===
+        DrawVolumeSlider(x, y, scale);
 
         // === UI SCALE SLIDER ===
         DrawUIScaleSlider(x, y, scale);
@@ -141,39 +115,101 @@ public class SettingsPanel : BasePanel
     }
 
     /// <summary>
-    /// Draw toggle button with icon.
+    /// Draw a checkbox with label.
     /// </summary>
-    private void DrawToggleButton(float panelX, float panelY, float scale,
-                                    float x, float y, Texture2D icon, bool isEnabled)
+    private void DrawCheckbox(float panelX, float panelY, float scale, float x, float y, string label, bool isChecked)
     {
-        Rect buttonRect = new Rect(panelX + x * scale, panelY + y * scale, 32 * scale, 32 * scale);
+        float checkboxSize = 12 * scale;
+        Rect checkboxRect = new Rect(panelX + x * scale, panelY + y * scale, checkboxSize, checkboxSize);
 
-        // Draw icon
-        GUI.DrawTexture(buttonRect, icon);
+        // Draw checkbox outline
+        Color oldColor = GUI.color;
+        GUI.color = UIFonts.YellowText;
+        GUI.Box(checkboxRect, "");
 
-        // Draw disabled overlay if off
-        if (!isEnabled)
+        // Draw checkmark if checked (filled square)
+        if (isChecked)
         {
-            GUI.DrawTexture(buttonRect, disabledOverlay);
+            Rect fillRect = new Rect(
+                checkboxRect.x + 2 * scale,
+                checkboxRect.y + 2 * scale,
+                checkboxRect.width - 4 * scale,
+                checkboxRect.height - 4 * scale
+            );
+            GUI.DrawTexture(fillRect, Texture2D.whiteTexture);
         }
 
-        // Highlight on hover
-        if (UILayout.IsMouseOverRect(buttonRect))
+        GUI.color = oldColor;
+
+        // Draw label to the right of checkbox
+        Rect labelRect = new Rect(
+            panelX + (x + 16) * scale,
+            panelY + (y - 2) * scale,
+            150 * scale,
+            20
+        );
+        GUI.Label(labelRect, label, checkboxLabelStyle);
+
+        // Hover highlight
+        Rect hoverRect = new Rect(panelX + x * scale, panelY + y * scale, 120 * scale, 16 * scale);
+        if (UILayout.IsMouseOverRect(hoverRect))
         {
-            Color oldColor = GUI.color;
-            GUI.color = new Color(1, 1, 1, 0.2f);
-            GUI.DrawTexture(buttonRect, Texture2D.whiteTexture);
+            oldColor = GUI.color;
+            GUI.color = new Color(1, 1, 1, 0.1f);
+            GUI.DrawTexture(hoverRect, Texture2D.whiteTexture);
             GUI.color = oldColor;
         }
     }
 
     /// <summary>
+    /// Draw Volume slider (0% - 100%).
+    /// Position: Top of panel
+    /// </summary>
+    private void DrawVolumeSlider(float panelX, float panelY, float scale)
+    {
+        float startY = 70; // Below checkboxes
+
+        // Label above slider
+        string label = "Volume";
+        UIFonts.DrawShadowedText(
+            new Rect(panelX + 20 * scale, panelY + startY * scale, 100 * scale, 20),
+            label, labelStyle, scale);
+
+        // Use temp value if dragging, otherwise use actual setting
+        float displayValue = isDraggingVolume ? tempVolume : UISettings.Instance.volume;
+
+        // Current value on left (convert 0.0-1.0 to 0%-100%)
+        int volumePercent = Mathf.RoundToInt(displayValue * 100);
+        string valueText = $"{volumePercent}%";
+        UIFonts.DrawShadowedText(
+            new Rect(panelX + 20 * scale, panelY + (startY + 20) * scale, 50 * scale, 20),
+            valueText, valueStyle, scale);
+
+        // Slider bar on right
+        float sliderX = 75;
+        float sliderY = startY + 20;
+        float sliderWidth = 110;
+        float sliderHeight = 10;
+
+        DrawSlider(
+            panelX, panelY, scale,
+            sliderX, sliderY, sliderWidth, sliderHeight,
+            displayValue,
+            0.0f, 1.0f,
+            isDraggingVolume
+        );
+
+        // Draw tick marks (every 10% = every 0.1)
+        DrawTickMarks(panelX, panelY, scale, sliderX, sliderY + sliderHeight + 2, sliderWidth, 0.0f, 1.0f, 0.1f);
+    }
+
+    /// <summary>
     /// Draw UI Scale slider (50% - 300%).
-    /// Position: Below sound toggles
+    /// Position: Below volume slider
     /// </summary>
     private void DrawUIScaleSlider(float panelX, float panelY, float scale)
     {
-        float startY = 70; // Below sound toggles
+        float startY = 125; // Below volume slider
 
         // Label above slider
         string label = "UI Scale";
@@ -194,7 +230,7 @@ public class SettingsPanel : BasePanel
         // Slider bar on right
         float sliderX = 75;
         float sliderY = startY + 20;
-        float sliderWidth = 110; // ~80% of panel width minus value text space
+        float sliderWidth = 110;
         float sliderHeight = 10;
 
         DrawSlider(
@@ -215,7 +251,7 @@ public class SettingsPanel : BasePanel
     /// </summary>
     private void DrawPingSlider(float panelX, float panelY, float scale)
     {
-        float startY = 125; // Below UI scale slider
+        float startY = 180; // Below UI scale slider
 
         // Label above slider
         string label = "Ping";
@@ -315,8 +351,7 @@ public class SettingsPanel : BasePanel
     /// </summary>
     private void DrawKeyBindingSection(float panelX, float panelY, float scale)
     {
-        // Position 4px above where edit buttons currently sit (250 - 4 = 246)
-        float startY = 246 - 30; // Subtract button height to position bottom edge
+        float startY = 234; // Adjusted position
 
         // Title above buttons
         string title = bindingKey == null ? "Key Bindings" : "Press Key To Bind";
@@ -326,9 +361,8 @@ public class SettingsPanel : BasePanel
 
         // Draw key binding buttons with their current keys
         float buttonSize = 30;
-        float gap = 8; // Gap between buttons
-        float totalWidth = buttonSize * 5 + gap * 4; // 150 + 32 = 182px
-        float startX = 10; // Fixed left margin to move buttons to the right
+        float gap = 8;
+        float startX = 10;
 
         // Combat key
         DrawKeyButton(panelX + startX * scale, panelY + startY * scale, buttonSize * scale, "combat",
@@ -381,26 +415,17 @@ public class SettingsPanel : BasePanel
     {
         if (UISettings.Instance == null) return;
 
-        // Sound toggle (20, 20, 32x32) - toggles BOTH audio settings
-        if (relativeX > 20 && relativeX < 52 && relativeY > 20 && relativeY < 52)
-        {
-            bool newState = !(UISettings.Instance.playsAudio && UISettings.Instance.playsAreaAudio);
-            UISettings.Instance.playsAudio = newState;
-            UISettings.Instance.playsAreaAudio = newState;
-            UISettings.Instance.SaveSettings();
-            Debug.Log($"[SettingsPanel] Audio: {newState}");
-            return;
-        }
-        // Metronome toggle (60, 20, 32x32)
-        else if (relativeX > 60 && relativeX < 92 && relativeY > 20 && relativeY < 52)
+        // Metronome checkbox (20, 20, ~120x16 clickable area)
+        if (relativeX > 20 && relativeX < 140 && relativeY > 20 && relativeY < 36)
         {
             UISettings.Instance.metronome = !UISettings.Instance.metronome;
             UISettings.Instance.SaveSettings();
             Debug.Log($"[SettingsPanel] Metronome: {UISettings.Instance.metronome}");
             return;
         }
-        // WASD camera toggle (100, 20, 32x32)
-        else if (relativeX > 100 && relativeX < 132 && relativeY > 20 && relativeY < 52)
+
+        // WASD Camera checkbox (20, 40, ~120x16 clickable area)
+        if (relativeX > 20 && relativeX < 140 && relativeY > 40 && relativeY < 56)
         {
             UISettings.Instance.wasdCamera = !UISettings.Instance.wasdCamera;
             UISettings.Instance.SaveSettings();
@@ -408,21 +433,31 @@ public class SettingsPanel : BasePanel
             return;
         }
 
-        // Check UI Scale slider click
+        // Check Volume slider click
         if (relativeX > 75 && relativeX < 185 && relativeY > 90 && relativeY < 105)
         {
+            isDraggingVolume = true;
+            tempVolume = UISettings.Instance.volume;
+            HandleSliderDrag(relativeX, 75, 110, 0.0f, 1.0f, true, out float newValue);
+            tempVolume = newValue;
+            return;
+        }
+
+        // Check UI Scale slider click
+        if (relativeX > 75 && relativeX < 185 && relativeY > 145 && relativeY < 160)
+        {
             isDraggingUIScale = true;
-            tempUIScale = UISettings.Instance.maxUiScale; // Start with current value
+            tempUIScale = UISettings.Instance.maxUiScale;
             HandleSliderDrag(relativeX, 75, 110, 0.5f, 3.0f, true, out float newValue);
             tempUIScale = newValue;
             return;
         }
 
         // Check Ping slider click
-        if (relativeX > 75 && relativeX < 185 && relativeY > 145 && relativeY < 160)
+        if (relativeX > 75 && relativeX < 185 && relativeY > 200 && relativeY < 215)
         {
             isDraggingPing = true;
-            tempPing = UISettings.Instance.inputDelay; // Start with current value
+            tempPing = UISettings.Instance.inputDelay;
             HandleSliderDrag(relativeX, 75, 110, 0, 200, false, out float newValue);
             tempPing = Mathf.RoundToInt(newValue);
             return;
@@ -431,8 +466,8 @@ public class SettingsPanel : BasePanel
         // Check for key binding button clicks
         float buttonSize = 30;
         float gap = 8;
-        float startX = 20;
-        float startY = 246 - 30;
+        float startX = 10;
+        float startY = 234;
 
         if (relativeY >= startY && relativeY <= startY + buttonSize)
         {
@@ -462,6 +497,12 @@ public class SettingsPanel : BasePanel
     public override void OnCursorMoved(float relativeX, float relativeY)
     {
         // Handle slider dragging - update temp values only
+        if (isDraggingVolume)
+        {
+            HandleSliderDrag(relativeX, 75, 110, 0.0f, 1.0f, true, out float newValue);
+            tempVolume = newValue;
+        }
+
         if (isDraggingUIScale)
         {
             HandleSliderDrag(relativeX, 75, 110, 0.5f, 3.0f, true, out float newValue);
@@ -478,8 +519,16 @@ public class SettingsPanel : BasePanel
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         if (Mathf.Abs(scroll) > 0.001f)
         {
-            // Check if mouse is over UI Scale slider area
+            // Check if mouse is over Volume slider area
             if (relativeX > 20 && relativeX < 185 && relativeY > 70 && relativeY < 105)
+            {
+                float change = scroll > 0 ? 0.05f : -0.05f; // +/- 5%
+                UISettings.Instance.volume = Mathf.Clamp(UISettings.Instance.volume + change, 0.0f, 1.0f);
+                UISettings.Instance.SaveSettings();
+                Debug.Log($"[SettingsPanel] Volume: {UISettings.Instance.volume:F2}");
+            }
+            // Check if mouse is over UI Scale slider area
+            else if (relativeX > 20 && relativeX < 185 && relativeY > 125 && relativeY < 160)
             {
                 float change = scroll > 0 ? 0.1f : -0.1f; // +/- 10%
                 UISettings.Instance.maxUiScale = Mathf.Clamp(UISettings.Instance.maxUiScale + change, 0.5f, 3.0f);
@@ -487,7 +536,7 @@ public class SettingsPanel : BasePanel
                 Debug.Log($"[SettingsPanel] UI Scale: {UISettings.Instance.maxUiScale:F2}");
             }
             // Check if mouse is over Ping slider area
-            else if (relativeX > 20 && relativeX < 185 && relativeY > 125 && relativeY < 160)
+            else if (relativeX > 20 && relativeX < 185 && relativeY > 180 && relativeY < 215)
             {
                 int change = scroll > 0 ? 10 : -10; // +/- 10ms
                 UISettings.Instance.inputDelay = Mathf.Clamp(UISettings.Instance.inputDelay + change, 0, 200);
@@ -500,6 +549,13 @@ public class SettingsPanel : BasePanel
     public override void OnMouseUp()
     {
         // Apply temp values and save on mouse release
+        if (isDraggingVolume)
+        {
+            UISettings.Instance.volume = tempVolume;
+            UISettings.Instance.SaveSettings();
+            Debug.Log($"[SettingsPanel] Volume set to: {tempVolume:F2}");
+        }
+
         if (isDraggingUIScale)
         {
             UISettings.Instance.maxUiScale = tempUIScale;
@@ -514,6 +570,7 @@ public class SettingsPanel : BasePanel
             Debug.Log($"[SettingsPanel] Ping set to: {tempPing}ms");
         }
 
+        isDraggingVolume = false;
         isDraggingUIScale = false;
         isDraggingPing = false;
     }
@@ -522,16 +579,22 @@ public class SettingsPanel : BasePanel
     /// Handle slider drag input.
     /// </summary>
     private void HandleSliderDrag(float mouseX, float sliderX, float sliderWidth,
-                                   float minValue, float maxValue, bool isUIScale, out float newValue)
+                                   float minValue, float maxValue, bool useDecimals, out float newValue)
     {
         float percent = Mathf.Clamp01((mouseX - sliderX) / sliderWidth);
         newValue = Mathf.Lerp(minValue, maxValue, percent);
 
-        // Round to whole numbers or appropriate intervals
-        if (isUIScale)
+        // Round appropriately
+        if (useDecimals)
         {
-            // Round to nearest 0.05 for UI scale (5%)
-            newValue = Mathf.Round(newValue * 20) / 20f;
+            if (maxValue <= 1.0f) // Volume slider (0.0-1.0)
+            {
+                newValue = Mathf.Round(newValue * 20) / 20f; // Round to 0.05
+            }
+            else // UI Scale slider (0.5-3.0)
+            {
+                newValue = Mathf.Round(newValue * 20) / 20f; // Round to 0.05
+            }
         }
         else
         {
@@ -551,5 +614,4 @@ public class SettingsPanel : BasePanel
     {
         return Object.FindAnyObjectByType<Player>();
     }
-
 }
