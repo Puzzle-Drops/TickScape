@@ -15,6 +15,7 @@ public class SettingsPanel : BasePanel
     // Button textures
     private Texture2D soundTexture;
     private Texture2D metronomeTexture;
+    private Texture2D wasdTexture;
     private Texture2D disabledOverlay;
 
     // Slider state
@@ -46,6 +47,12 @@ public class SettingsPanel : BasePanel
         metronomeTexture = TextureLoader.LoadTexture(
             "UI/Elements/metronome",
             new Color(0.6f, 0.5f, 0.4f),
+            32, 32
+        );
+
+        wasdTexture = TextureLoader.LoadTexture(
+            "UI/Elements/wasd",
+            new Color(0.4f, 0.5f, 0.6f),
             32, 32
         );
 
@@ -119,6 +126,9 @@ public class SettingsPanel : BasePanel
 
         // Metronome toggle button (60, 20) - to the right of audio
         DrawToggleButton(x, y, scale, 60, 20, metronomeTexture, UISettings.Instance.metronome);
+
+        // WASD camera toggle button (100, 20) - to the right of metronome
+        DrawToggleButton(x, y, scale, 100, 20, wasdTexture, UISettings.Instance.wasdCamera);
 
         // === UI SCALE SLIDER ===
         DrawUIScaleSlider(x, y, scale);
@@ -389,6 +399,14 @@ public class SettingsPanel : BasePanel
             Debug.Log($"[SettingsPanel] Metronome: {UISettings.Instance.metronome}");
             return;
         }
+        // WASD camera toggle (100, 20, 32x32)
+        else if (relativeX > 100 && relativeX < 132 && relativeY > 20 && relativeY < 52)
+        {
+            UISettings.Instance.wasdCamera = !UISettings.Instance.wasdCamera;
+            UISettings.Instance.SaveSettings();
+            Debug.Log($"[SettingsPanel] WASD Camera: {UISettings.Instance.wasdCamera}");
+            return;
+        }
 
         // Check UI Scale slider click
         if (relativeX > 75 && relativeX < 185 && relativeY > 90 && relativeY < 105)
@@ -533,4 +551,5 @@ public class SettingsPanel : BasePanel
     {
         return Object.FindAnyObjectByType<Player>();
     }
+
 }
