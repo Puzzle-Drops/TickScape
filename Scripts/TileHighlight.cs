@@ -1,6 +1,11 @@
 using UnityEngine;
 using System.Collections.Generic;
 
+/// <summary>
+/// Tile highlighting system with support for multi-tile mobs.
+/// Matches SDK's rendering approach where outlines scale with unit size.
+/// SDK Reference: CanvasSpriteModel.ts, GLTFModel.ts, TileMarkerModel.ts
+/// </summary>
 public class TileHighlight : MonoBehaviour
 {
     [Header("Highlight Materials")]
@@ -31,14 +36,14 @@ public class TileHighlight : MonoBehaviour
 
     void Start()
     {
-        // Create hover highlight with customizable color
-        hoverHighlight = CreateTileBorder("HoverHighlight", hoverMaterial, hoverColor);
+        // Create hover highlight (always 1x1) with customizable color
+        hoverHighlight = CreateTileBorder("HoverHighlight", hoverMaterial, hoverColor, 1);
 
-        // Create player tile highlight with customizable color
-        playerTileHighlight = CreateTileBorder("PlayerTileHighlight", playerTileMaterial, playerTileColor);
+        // Create player tile highlight (always 1x1) with customizable color
+        playerTileHighlight = CreateTileBorder("PlayerTileHighlight", playerTileMaterial, playerTileColor, 1);
 
-        // Create destination highlight with customizable color
-        destinationHighlight = CreateTileBorder("DestinationHighlight", destinationMaterial, destinationColor);
+        // Create destination highlight (always 1x1) with customizable color
+        destinationHighlight = CreateTileBorder("DestinationHighlight", destinationMaterial, destinationColor, 1);
 
         // Initially hide all
         hoverHighlight.SetActive(false);
@@ -53,13 +58,16 @@ public class TileHighlight : MonoBehaviour
     }
 
     /// <summary>
-    /// Create a tile border with a material template and runtime color override.
+    /// Create a tile border with size-aware dimensions.
+    /// Matches SDK pattern where outline geometry is created once based on unit size.
+    /// SDK Reference: CanvasSpriteModel.ts lines 60-68, GLTFModel.ts lines 82-93
     /// </summary>
     /// <param name="name">Name for the GameObject</param>
     /// <param name="materialTemplate">Material asset to use as template (provides shader)</param>
     /// <param name="color">Color to apply at runtime (overrides material color)</param>
+    /// <param name="size">Size in tiles (1 for 1x1, 2 for 2x2, etc.)</param>
     /// <returns>GameObject with configured LineRenderer</returns>
-    GameObject CreateTileBorder(string name, Material materialTemplate, Color color)
+    GameObject CreateTileBorder(string name, Material materialTemplate, Color color, int size)
     {
         GameObject border = new GameObject(name);
         border.transform.parent = transform;
@@ -81,7 +89,7 @@ public class TileHighlight : MonoBehaviour
 
             lineRenderer.material = instanceMaterial;
 
-            Debug.Log($"[TileHighlight] Created '{name}' using material template '{materialTemplate.name}' " +
+            Debug.Log($"[TileHighlight] Created '{name}' (size {size}x{size}) using material template '{materialTemplate.name}' " +
                      $"with shader '{materialTemplate.shader.name}' and custom color {color}");
         }
         else
@@ -106,14 +114,24 @@ public class TileHighlight : MonoBehaviour
         // Set high sorting order to ensure it renders on top
         lineRenderer.sortingOrder = 100;
 
-        // Set corner positions (square border)
+        // ===== CRITICAL: Calculate corners based on size =====
+        // SDK creates outlines from (0, 0) to (size, -size) positioned at unit's SW corner
+        // We maintain the current "centered with border" style for visual consistency:
+        // - 1x1: (-0.5, -0.5) to (0.5, 0.5) - same as before ✅
+        // - 2x2: (-0.5, -0.5) to (1.5, 1.5) - covers 2x2 area with border ✅
+        // - 3x3: (-0.5, -0.5) to (2.5, 2.5) - covers 3x3 area with border ✅
+        // Formula: from (-0.5, -0.5) to (size - 0.5, size - 0.5)
+        
+        float halfTile = 0.5f;
+        float extent = size - halfTile;  // For size=2: extent = 1.5
+
         Vector3[] positions = new Vector3[]
         {
-            new Vector3(-0.5f, heightOffset, -0.5f),
-            new Vector3(0.5f, heightOffset, -0.5f),
-            new Vector3(0.5f, heightOffset, 0.5f),
-            new Vector3(-0.5f, heightOffset, 0.5f),
-            new Vector3(-0.5f, heightOffset, -0.5f) // Close the loop
+            new Vector3(-halfTile, heightOffset, -halfTile),  // SW corner
+            new Vector3(extent, heightOffset, -halfTile),     // SE corner
+            new Vector3(extent, heightOffset, extent),        // NE corner
+            new Vector3(-halfTile, heightOffset, extent),     // NW corner
+            new Vector3(-halfTile, heightOffset, -halfTile)   // Close the loop
         };
 
         lineRenderer.positionCount = positions.Length;
@@ -123,7 +141,9 @@ public class TileHighlight : MonoBehaviour
     }
 
     /// <summary>
-    /// Update highlights for all NPCs (Units that aren't Players)
+    /// Update highlights for all NPCs (Units that aren't Players).
+    /// Creates size-appropriate highlights for each NPC once, then reuses them.
+    /// SDK Reference: SDK creates outline once in constructor, updates position in draw()
     /// </summary>
     void UpdateNPCHighlights()
     {
@@ -160,18 +180,24 @@ public class TileHighlight : MonoBehaviour
         {
             GameObject highlight;
 
-            // Create new highlight if needed
+            // Create new highlight if needed (ONCE, with correct size)
+            // SDK Reference: CanvasSpriteModel constructor creates outline once with size
             if (!npcHighlights.ContainsKey(npc))
             {
-                highlight = CreateTileBorder($"NPC_{npc.UnitName()}_Highlight", npcMaterial, npcTileColor);
+                // CRITICAL: Pass npc.size to create size-appropriate highlight
+                highlight = CreateTileBorder($"NPC_{npc.UnitName()}_Highlight", 
+                                            npcMaterial, npcTileColor, npc.size);
                 npcHighlights[npc] = highlight;
             }
             else
             {
+                // Reuse existing highlight (SDK pattern: geometry created once, just update position)
                 highlight = npcHighlights[npc];
             }
 
-            // Update position based on NPC's true grid position
+            // Update position based on NPC's SW corner (gridPosition)
+            // SDK Reference: outline.position.x = x; outline.position.z = y;
+            // The LineRenderer corners are relative to this position and extend based on size
             Vector3 worldPos = GridManager.Instance.GridToWorld(npc.gridPosition);
             highlight.transform.position = worldPos;
 
@@ -180,6 +206,9 @@ public class TileHighlight : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Set hover tile highlight (always 1x1).
+    /// </summary>
     public void SetHoverTile(Vector2Int? gridPos)
     {
         if (gridPos.HasValue && GridManager.Instance != null)
@@ -194,6 +223,9 @@ public class TileHighlight : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Set player tile highlight (always 1x1).
+    /// </summary>
     public void SetPlayerTile(Vector2Int gridPos)
     {
         if (GridManager.Instance != null)
@@ -204,6 +236,9 @@ public class TileHighlight : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Set destination tile highlight (always 1x1).
+    /// </summary>
     public void SetDestinationTile(Vector2Int? gridPos)
     {
         if (gridPos.HasValue && GridManager.Instance != null)
