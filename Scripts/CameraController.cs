@@ -23,9 +23,6 @@ public class CameraController : MonoBehaviour
     public Transform pitchObject;
 
     [Header("Camera Settings")]
-    [Tooltip("Enable WASD camera controls (will integrate with Settings later)")]
-    public bool allowWASD = false;
-
     [Tooltip("Show UI adjustment (for future UI implementation)")]
     public bool adjustForUI = false;
 
@@ -200,7 +197,7 @@ public class CameraController : MonoBehaviour
             pitchDelta = PITCH_SPEED;
 
         // Check for WASD (if enabled)
-        if (allowWASD)
+        if (UISettings.Instance != null && UISettings.Instance.wasdCamera)
         {
             if (Input.GetKey(KeyCode.A))
                 yawDelta = YAW_SPEED;
@@ -355,3 +352,4 @@ public class CameraController : MonoBehaviour
         }
     }
 }
+
