@@ -63,7 +63,7 @@ public class SettingsPanel : BasePanel
         valueStyle = UIFonts.CreateTextStyle(16, UIFonts.YellowText, TextAnchor.MiddleLeft);
         checkboxLabelStyle = UIFonts.CreateTextStyle(14, UIFonts.YellowText, TextAnchor.MiddleLeft);
         headerStyle = UIFonts.CreateTextStyle(18, UIFonts.YellowText, TextAnchor.MiddleCenter);
-        hexInputStyle = UIFonts.CreateTextStyle(14, UIFonts.YellowText, TextAnchor.MiddleCenter);
+        hexInputStyle = UIFonts.CreateTextStyle(14, UIFonts.YellowText, TextAnchor.MiddleLeft);
     }
 
     public void HandleKeyBinding()
@@ -150,15 +150,15 @@ public class SettingsPanel : BasePanel
     {
         // === TOP SECTION: Checkboxes and Color Buttons (2 columns) ===
         
-        // LEFT COLUMN: Checkboxes (moved 4px left and up: 20→16, 20→16, 40→36)
-        DrawCheckbox(x, y, scale, 16, 16, "Metronome", UISettings.Instance.metronome);
-        DrawCheckbox(x, y, scale, 16, 36, "WASD Camera", UISettings.Instance.wasdCamera);
+        // LEFT COLUMN: Checkboxes (moved 4px left: 16→12, 16→12, 36→32)
+        DrawCheckbox(x, y, scale, 12, 12, "Metronome", UISettings.Instance.metronome);
+        DrawCheckbox(x, y, scale, 12, 32, "WASD Camera", UISettings.Instance.wasdCamera);
 
-        // RIGHT COLUMN: Color Buttons (moved 4px left and up: 120→116, 20→16, 40→36, 60→56, 80→76)
-        DrawColorButton(x, y, scale, 116, 16, "Hover", UISettings.Instance.hoverColor);
-        DrawColorButton(x, y, scale, 116, 36, "Destination", UISettings.Instance.destinationColor);
-        DrawColorButton(x, y, scale, 116, 56, "Player", UISettings.Instance.playerTileColor);
-        DrawColorButton(x, y, scale, 116, 76, "NPC", UISettings.Instance.npcTileColor);
+        // RIGHT COLUMN: Color Buttons (moved 4px left: 116→112, 16→12, 36→32, 56→52, 76→72)
+        DrawColorButton(x, y, scale, 112, 12, "Hover", UISettings.Instance.hoverColor);
+        DrawColorButton(x, y, scale, 112, 32, "Destination", UISettings.Instance.destinationColor);
+        DrawColorButton(x, y, scale, 112, 52, "Player", UISettings.Instance.playerTileColor);
+        DrawColorButton(x, y, scale, 112, 72, "NPC", UISettings.Instance.npcTileColor);
 
         // === VOLUME SLIDER ===
         DrawVolumeSlider(x, y, scale);
@@ -243,26 +243,26 @@ public class SettingsPanel : BasePanel
     /// </summary>
     private void DrawVolumeSlider(float panelX, float panelY, float scale)
     {
-        float startY = 106; // Moved up 4px from 110
+        float startY = 102; // Moved up 4px from 106
 
-        // Label above slider
+        // Label above slider (moved left 4px: 16→12)
         string label = "Volume";
         UIFonts.DrawShadowedText(
-            new Rect(panelX + 16 * scale, panelY + startY * scale, 100 * scale, 20), // Moved left 4px from 20
+            new Rect(panelX + 12 * scale, panelY + startY * scale, 100 * scale, 20),
             label, labelStyle, scale);
 
         // Use temp value if dragging, otherwise use actual setting
         float displayValue = isDraggingVolume ? tempVolume : UISettings.Instance.volume;
 
-        // Current value on left (convert 0.0-1.0 to 0%-100%)
+        // Current value on left (moved left 4px: 16→12)
         int volumePercent = Mathf.RoundToInt(displayValue * 100);
         string valueText = $"{volumePercent}%";
         UIFonts.DrawShadowedText(
-            new Rect(panelX + 16 * scale, panelY + (startY + 20) * scale, 50 * scale, 20), // Moved left 4px from 20
+            new Rect(panelX + 12 * scale, panelY + (startY + 20) * scale, 50 * scale, 20),
             valueText, valueStyle, scale);
 
-        // Slider bar on right
-        float sliderX = 71; // Moved left 4px from 75
+        // Slider bar on right (moved left 4px: 71→67)
+        float sliderX = 67;
         float sliderY = startY + 20;
         float sliderWidth = 110;
         float sliderHeight = 10;
@@ -275,7 +275,7 @@ public class SettingsPanel : BasePanel
             isDraggingVolume
         );
 
-        // Draw tick marks (every 10% = every 0.1)
+        // Draw tick marks
         DrawTickMarks(panelX, panelY, scale, sliderX, sliderY + sliderHeight + 2, sliderWidth, 0.0f, 1.0f, 0.1f);
     }
 
@@ -284,26 +284,26 @@ public class SettingsPanel : BasePanel
     /// </summary>
     private void DrawUIScaleSlider(float panelX, float panelY, float scale)
     {
-        float startY = 151; // Moved up 4px from 155
+        float startY = 147; // Moved up 4px from 151
 
-        // Label above slider
+        // Label above slider (moved left 4px: 16→12)
         string label = "UI Scale";
         UIFonts.DrawShadowedText(
-            new Rect(panelX + 16 * scale, panelY + startY * scale, 100 * scale, 20), // Moved left 4px from 20
+            new Rect(panelX + 12 * scale, panelY + startY * scale, 100 * scale, 20),
             label, labelStyle, scale);
 
         // Use temp value if dragging, otherwise use actual setting
         float displayValue = isDraggingUIScale ? tempUIScale : UISettings.Instance.maxUiScale;
 
-        // Current value on left (convert 0.5-3.0 to 50%-300%)
+        // Current value on left (moved left 4px: 16→12)
         int scalePercent = Mathf.RoundToInt(displayValue * 100);
         string valueText = $"{scalePercent}%";
         UIFonts.DrawShadowedText(
-            new Rect(panelX + 16 * scale, panelY + (startY + 20) * scale, 50 * scale, 20), // Moved left 4px from 20
+            new Rect(panelX + 12 * scale, panelY + (startY + 20) * scale, 50 * scale, 20),
             valueText, valueStyle, scale);
 
-        // Slider bar on right
-        float sliderX = 71; // Moved left 4px from 75
+        // Slider bar on right (moved left 4px: 71→67)
+        float sliderX = 67;
         float sliderY = startY + 20;
         float sliderWidth = 110;
         float sliderHeight = 10;
@@ -316,7 +316,7 @@ public class SettingsPanel : BasePanel
             isDraggingUIScale
         );
 
-        // Draw tick marks (every 2.5% = every 0.025 in scale)
+        // Draw tick marks
         DrawTickMarks(panelX, panelY, scale, sliderX, sliderY + sliderHeight + 2, sliderWidth, 0.5f, 3.0f, 0.025f);
     }
 
@@ -325,25 +325,25 @@ public class SettingsPanel : BasePanel
     /// </summary>
     private void DrawPingSlider(float panelX, float panelY, float scale)
     {
-        float startY = 196; // Moved up 4px from 200
+        float startY = 192; // Moved up 4px from 196
 
-        // Label above slider
+        // Label above slider (moved left 4px: 16→12)
         string label = "Ping";
         UIFonts.DrawShadowedText(
-            new Rect(panelX + 16 * scale, panelY + startY * scale, 100 * scale, 20), // Moved left 4px from 20
+            new Rect(panelX + 12 * scale, panelY + startY * scale, 100 * scale, 20),
             label, labelStyle, scale);
 
         // Use temp value if dragging, otherwise use actual setting
         int displayValue = isDraggingPing ? tempPing : UISettings.Instance.inputDelay;
 
-        // Current value on left
+        // Current value on left (moved left 4px: 16→12)
         string valueText = $"{displayValue}ms";
         UIFonts.DrawShadowedText(
-            new Rect(panelX + 16 * scale, panelY + (startY + 20) * scale, 50 * scale, 20), // Moved left 4px from 20
+            new Rect(panelX + 12 * scale, panelY + (startY + 20) * scale, 50 * scale, 20),
             valueText, valueStyle, scale);
 
-        // Slider bar on right
-        float sliderX = 71; // Moved left 4px from 75
+        // Slider bar on right (moved left 4px: 71→67)
+        float sliderX = 67;
         float sliderY = startY + 20;
         float sliderWidth = 110;
         float sliderHeight = 10;
@@ -356,7 +356,7 @@ public class SettingsPanel : BasePanel
             isDraggingPing
         );
 
-        // Draw tick marks (every 5ms)
+        // Draw tick marks
         DrawTickMarks(panelX, panelY, scale, sliderX, sliderY + sliderHeight + 2, sliderWidth, 0, 200, 5);
     }
 
@@ -427,7 +427,7 @@ public class SettingsPanel : BasePanel
         float startY = 236; // Moved up 4px from 240
         float buttonSize = 30;
         float gap = 8;
-        float startX = 6; // Moved left 4px from 10
+        float startX = 10; // Moved right 4px from 6
 
         // Combat key
         DrawKeyButton(panelX + startX * scale, panelY + startY * scale, buttonSize * scale, "combat",
@@ -471,8 +471,8 @@ public class SettingsPanel : BasePanel
 
         UIFonts.DrawShadowedText(new Rect(x, y + 2 * scale, size, size / 2), label, keyStyle, scale);
         
-        // Show "..." if binding this key, otherwise show current key
-        string displayKey = (bindingKey == keyName) ? "..." : currentKey;
+        // Show ".." if binding this key, otherwise show current key
+        string displayKey = (bindingKey == keyName) ? ".." : currentKey;
         UIFonts.DrawShadowedText(new Rect(x, y + size / 2, size, size / 2), displayKey, keyStyle, scale);
     }
 
@@ -598,9 +598,12 @@ public class SettingsPanel : BasePanel
         }
         
         hexInputStyle.font = UIFonts.VT323;
-        hexInputStyle.alignment = TextAnchor.MiddleCenter;
+        hexInputStyle.alignment = TextAnchor.MiddleLeft; // LEFT ALIGNED to prevent jankiness
         hexInputStyle.normal.textColor = isEditingHex ? Color.white : UIFonts.YellowText;
-        UIFonts.DrawShadowedText(inputRect, displayText, hexInputStyle, scale);
+        
+        // Add padding for left alignment
+        Rect textRect = new Rect(inputRect.x + 4 * scale, inputRect.y, inputRect.width - 4 * scale, inputRect.height);
+        UIFonts.DrawShadowedText(textRect, displayText, hexInputStyle, scale);
 
         // Info text
         GUIStyle infoStyle = UIFonts.CreateTextStyle(Mathf.RoundToInt(10 * scale), new Color(0.7f, 0.7f, 0.7f), TextAnchor.MiddleCenter);
@@ -810,8 +813,8 @@ public class SettingsPanel : BasePanel
     /// </summary>
     private void HandleNormalModeClick(float relativeX, float relativeY)
     {
-        // Metronome checkbox (16, 16, checkbox + label only) - moved from 20, 20
-        if (relativeX > 16 && relativeX < 96 && relativeY > 16 && relativeY < 32)
+        // Metronome checkbox (12, 12, checkbox + label only) - moved from 16, 16
+        if (relativeX > 12 && relativeX < 92 && relativeY > 12 && relativeY < 28)
         {
             UISettings.Instance.metronome = !UISettings.Instance.metronome;
             UISettings.Instance.SaveSettings();
@@ -819,8 +822,8 @@ public class SettingsPanel : BasePanel
             return;
         }
 
-        // WASD Camera checkbox (16, 36, checkbox + label only) - moved from 20, 40
-        if (relativeX > 16 && relativeX < 106 && relativeY > 36 && relativeY < 52)
+        // WASD Camera checkbox (12, 32, checkbox + label only) - moved from 16, 36
+        if (relativeX > 12 && relativeX < 102 && relativeY > 32 && relativeY < 48)
         {
             UISettings.Instance.wasdCamera = !UISettings.Instance.wasdCamera;
             UISettings.Instance.SaveSettings();
@@ -828,70 +831,70 @@ public class SettingsPanel : BasePanel
             return;
         }
 
-        // Color button clicks (right column) - all moved 4px left and up
-        // Hover (116, 16) - moved from 120, 20
-        if (relativeX > 116 && relativeX < 186 && relativeY > 16 && relativeY < 32)
+        // Color button clicks (right column) - all moved 4px left
+        // Hover (112, 12) - moved from 116, 16
+        if (relativeX > 112 && relativeX < 182 && relativeY > 12 && relativeY < 28)
         {
             StartColorEditing(SettingsMode.EditingHoverColor, UISettings.Instance.hoverColor);
             return;
         }
 
-        // Destination (116, 36) - moved from 120, 40
-        if (relativeX > 116 && relativeX < 186 && relativeY > 36 && relativeY < 52)
+        // Destination (112, 32) - moved from 116, 36
+        if (relativeX > 112 && relativeX < 182 && relativeY > 32 && relativeY < 48)
         {
             StartColorEditing(SettingsMode.EditingDestinationColor, UISettings.Instance.destinationColor);
             return;
         }
 
-        // Player (116, 56) - moved from 120, 60
-        if (relativeX > 116 && relativeX < 186 && relativeY > 56 && relativeY < 72)
+        // Player (112, 52) - moved from 116, 56
+        if (relativeX > 112 && relativeX < 182 && relativeY > 52 && relativeY < 68)
         {
             StartColorEditing(SettingsMode.EditingPlayerColor, UISettings.Instance.playerTileColor);
             return;
         }
 
-        // NPC (116, 76) - moved from 120, 80
-        if (relativeX > 116 && relativeX < 186 && relativeY > 76 && relativeY < 92)
+        // NPC (112, 72) - moved from 116, 76
+        if (relativeX > 112 && relativeX < 182 && relativeY > 72 && relativeY < 88)
         {
             StartColorEditing(SettingsMode.EditingNPCColor, UISettings.Instance.npcTileColor);
             return;
         }
 
-        // Check Volume slider click (Y=126-141) - moved from 130-145 (startY 106+20=126)
-        if (relativeX > 71 && relativeX < 181 && relativeY > 126 && relativeY < 141)
+        // Check Volume slider click (Y=122-137) - moved from 126-141 (startY 102+20=122)
+        if (relativeX > 67 && relativeX < 177 && relativeY > 122 && relativeY < 137)
         {
             isDraggingVolume = true;
             tempVolume = UISettings.Instance.volume;
-            HandleSliderDrag(relativeX, 71, 110, 0.0f, 1.0f, true, out float newValue);
+            HandleSliderDrag(relativeX, 67, 110, 0.0f, 1.0f, true, out float newValue);
             tempVolume = newValue;
             return;
         }
 
-        // Check UI Scale slider click (Y=171-186) - moved from 175-190 (startY 151+20=171)
-        if (relativeX > 71 && relativeX < 181 && relativeY > 171 && relativeY < 186)
+        // Check UI Scale slider click (Y=167-182) - moved from 171-186 (startY 147+20=167)
+        if (relativeX > 67 && relativeX < 177 && relativeY > 167 && relativeY < 182)
         {
             isDraggingUIScale = true;
             tempUIScale = UISettings.Instance.maxUiScale;
-            HandleSliderDrag(relativeX, 71, 110, 0.5f, 3.0f, true, out float newValue);
+            HandleSliderDrag(relativeX, 67, 110, 0.5f, 3.0f, true, out float newValue);
             tempUIScale = newValue;
             return;
         }
 
-        // Check Ping slider click (Y=216-231) - moved from 220-235 (startY 196+20=216)
-        if (relativeX > 71 && relativeX < 181 && relativeY > 216 && relativeY < 231)
+        // Check Ping slider click (Y=212-227) - moved from 216-231 (startY 192+20=212)
+        if (relativeX > 67 && relativeX < 177 && relativeY > 212 && relativeY < 227)
         {
             isDraggingPing = true;
             tempPing = UISettings.Instance.inputDelay;
-            HandleSliderDrag(relativeX, 71, 110, 0, 200, false, out float newValue);
+            HandleSliderDrag(relativeX, 67, 110, 0, 200, false, out float newValue);
             tempPing = Mathf.RoundToInt(newValue);
             return;
         }
 
-        // Check for key binding button clicks - moved from startY 240 to 236
+        // Check for key binding button clicks - moved from startY 236, startX from 6 to 10
         float buttonSize = 30;
         float gap = 8;
-        float startX = 6; // Moved from 10
-        float startY = 236; // Moved from 240
+        float startX = 10; // Moved right from 6
+        float startY = 236; // Moved up from 240
 
         if (relativeY >= startY && relativeY <= startY + buttonSize)
         {
@@ -963,11 +966,20 @@ public class SettingsPanel : BasePanel
             return;
         }
 
-        // Check hex input click to start editing
+        // Check hex input click to toggle editing
         if (relativeX > 60 && relativeX < 140 && relativeY > 215 && relativeY < 233)
         {
-            if (!isEditingHex)
+            // Toggle editing mode
+            if (isEditingHex)
             {
+                // Stop editing
+                isEditingHex = false;
+                hexInputBuffer = "";
+                Debug.Log("[SettingsPanel] Stopped hex editing");
+            }
+            else
+            {
+                // Start editing
                 isEditingHex = true;
                 hexInputBuffer = ColorToHex(tempColor).TrimStart('#');
                 Debug.Log("[SettingsPanel] Started hex editing");
@@ -1012,19 +1024,19 @@ public class SettingsPanel : BasePanel
             // Handle normal mode slider dragging
             if (isDraggingVolume)
             {
-                HandleSliderDrag(relativeX, 71, 110, 0.0f, 1.0f, true, out float newValue);
+                HandleSliderDrag(relativeX, 67, 110, 0.0f, 1.0f, true, out float newValue);
                 tempVolume = newValue;
             }
 
             if (isDraggingUIScale)
             {
-                HandleSliderDrag(relativeX, 71, 110, 0.5f, 3.0f, true, out float newValue);
+                HandleSliderDrag(relativeX, 67, 110, 0.5f, 3.0f, true, out float newValue);
                 tempUIScale = newValue;
             }
 
             if (isDraggingPing)
             {
-                HandleSliderDrag(relativeX, 71, 110, 0, 200, false, out float newValue);
+                HandleSliderDrag(relativeX, 67, 110, 0, 200, false, out float newValue);
                 tempPing = Mathf.RoundToInt(newValue);
             }
 
@@ -1032,22 +1044,22 @@ public class SettingsPanel : BasePanel
             float scroll = Input.GetAxis("Mouse ScrollWheel");
             if (Mathf.Abs(scroll) > 0.001f)
             {
-                // Volume slider area (Y=106-141, moved from 110-145)
-                if (relativeX > 16 && relativeX < 181 && relativeY > 106 && relativeY < 141)
+                // Volume slider area (Y=102-137, moved from 106-141)
+                if (relativeX > 12 && relativeX < 177 && relativeY > 102 && relativeY < 137)
                 {
                     float change = scroll > 0 ? 0.05f : -0.05f;
                     UISettings.Instance.volume = Mathf.Clamp(UISettings.Instance.volume + change, 0.0f, 1.0f);
                     UISettings.Instance.SaveSettings();
                 }
-                // UI Scale slider area (Y=151-186, moved from 155-190)
-                else if (relativeX > 16 && relativeX < 181 && relativeY > 151 && relativeY < 186)
+                // UI Scale slider area (Y=147-182, moved from 151-186)
+                else if (relativeX > 12 && relativeX < 177 && relativeY > 147 && relativeY < 182)
                 {
                     float change = scroll > 0 ? 0.1f : -0.1f;
                     UISettings.Instance.maxUiScale = Mathf.Clamp(UISettings.Instance.maxUiScale + change, 0.5f, 3.0f);
                     UISettings.Instance.SaveSettings();
                 }
-                // Ping slider area (Y=196-231, moved from 200-235)
-                else if (relativeX > 16 && relativeX < 181 && relativeY > 196 && relativeY < 231)
+                // Ping slider area (Y=192-227, moved from 196-231)
+                else if (relativeX > 12 && relativeX < 177 && relativeY > 192 && relativeY < 227)
                 {
                     int change = scroll > 0 ? 10 : -10;
                     UISettings.Instance.inputDelay = Mathf.Clamp(UISettings.Instance.inputDelay + change, 0, 200);
