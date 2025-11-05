@@ -36,7 +36,7 @@ public class Eating
     // Queued consumables (processed next tick)
     public Food currentFood;
     public Potion currentPotion;
-    public Karambwan currentComboFood;
+    public Octbwan currentComboFood;
 
     /// <summary>
     /// Process food/potion consumption and tick down delays.
@@ -179,7 +179,7 @@ public class Eating
     /// - Sets all three delays (food, potion, combo)
     /// - Allows "tick-perfect" 40+ HP healing
     /// </summary>
-    public void EatComboFood(Karambwan karambwan)
+    public void EatComboFood(Octbwan octbwan)
     {
         // Check if can combo eat
         if (!CanEatComboFood())
@@ -191,7 +191,7 @@ public class Eating
         // Queue karambwan for next tick
         foodDelay = 3;
         potionDelay = 3;
-        currentComboFood = karambwan;
+        currentComboFood = octbwan;
         comboDelay = 3;
 
         // Consume from inventory
@@ -200,6 +200,6 @@ public class Eating
             currentComboFood.ConsumeItem(player);
         }
 
-        Debug.Log($"[EATING] Queued combo food: Karambwan");
+        Debug.Log($"[EATING] Queued combo food: Octbwan");
     }
 }
