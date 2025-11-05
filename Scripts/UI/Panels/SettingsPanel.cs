@@ -153,6 +153,8 @@ public class SettingsPanel : BasePanel
         // LEFT COLUMN: Checkboxes (moved 4px left: 16→12, 16→12, 36→32)
         DrawCheckbox(x, y, scale, 12, 12, "Metronome", UISettings.Instance.metronome);
         DrawCheckbox(x, y, scale, 12, 32, "WASD Camera", UISettings.Instance.wasdCamera);
+        DrawCheckbox(x, y, scale, 12, 52, "Southwest", UISettings.Instance.showSouthwestTile);
+        DrawCheckbox(x, y, scale, 12, 72, "Tooltips", UISettings.Instance.showTooltips);
 
         // RIGHT COLUMN: Color Buttons (moved 4px left: 116→112, 16→12, 36→32, 56→52, 76→72)
         DrawColorButton(x, y, scale, 112, 12, "Hover", UISettings.Instance.hoverColor);
@@ -823,13 +825,33 @@ public class SettingsPanel : BasePanel
         }
 
         // WASD Camera checkbox (12, 32, checkbox + label only) - moved from 16, 36
-        if (relativeX > 12 && relativeX < 102 && relativeY > 32 && relativeY < 48)
-        {
-            UISettings.Instance.wasdCamera = !UISettings.Instance.wasdCamera;
-            UISettings.Instance.SaveSettings();
-            Debug.Log($"[SettingsPanel] WASD Camera: {UISettings.Instance.wasdCamera}");
-            return;
-        }
+if (relativeX > 12 && relativeX < 102 && relativeY > 32 && relativeY < 48)
+{
+    UISettings.Instance.wasdCamera = !UISettings.Instance.wasdCamera;
+    UISettings.Instance.SaveSettings();
+    Debug.Log($"[SettingsPanel] WASD Camera: {UISettings.Instance.wasdCamera}");
+    return;
+}
+
+// Southwest checkbox (12, 52)
+if (relativeX > 12 && relativeX < 102 && relativeY > 52 && relativeY < 68)
+{
+    UISettings.Instance.showSouthwestTile = !UISettings.Instance.showSouthwestTile;
+    UISettings.Instance.SaveSettings();
+    Debug.Log($"[SettingsPanel] Southwest Tile: {UISettings.Instance.showSouthwestTile}");
+    return;
+}
+
+// Tooltips checkbox (12, 72)
+if (relativeX > 12 && relativeX < 102 && relativeY > 72 && relativeY < 88)
+{
+    UISettings.Instance.showTooltips = !UISettings.Instance.showTooltips;
+    UISettings.Instance.SaveSettings();
+    Debug.Log($"[SettingsPanel] Tooltips: {UISettings.Instance.showTooltips}");
+    return;
+}
+
+// Color button clicks (right column) - all moved 4px left
 
         // Color button clicks (right column) - all moved 4px left
         // Hover (112, 12) - moved from 116, 16
