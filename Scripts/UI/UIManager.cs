@@ -122,11 +122,13 @@ public class UIManager : MonoBehaviour
             HealthPanel.Draw(scale, player, panelsMinimized);
         }
 
-        // Draw tooltip LAST (on top of everything)
-        if (HoverPreview.currentHover != null)
-        {
-            TooltipRenderer.Draw(HoverPreview.currentHover, scale);
-        }
+// Draw tooltip LAST (on top of everything)
+if (HoverPreview.currentHover != null && 
+    UISettings.Instance != null && 
+    UISettings.Instance.showTooltips)
+{
+    TooltipRenderer.Draw(HoverPreview.currentHover, scale);
+}
 
         // Debug info
         if (showDebugInfo)
@@ -389,5 +391,6 @@ public class UIManager : MonoBehaviour
     {
         return Object.FindAnyObjectByType<Player>();
     }
+
 
 }
