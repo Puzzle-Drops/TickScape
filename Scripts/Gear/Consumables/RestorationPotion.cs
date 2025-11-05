@@ -1,19 +1,19 @@
 using UnityEngine;
 
 /// <summary>
-/// Super restore - restores prayer and drained stats.
+/// Restoration potion - restores prayer and drained stats.
 /// SDK Reference: SuperRestore.ts
 /// 
 /// RESTORE FORMULAS:
 /// Prayer: floor(basePrayer * 0.27) + 8
 /// Other stats (if below base): floor(baseStat * 0.25) + 8
 /// </summary>
-public class SuperRestore : Potion
+public class RestorationPotion : Potion
 {
-    public SuperRestore()
+    public RestorationPotion()
     {
         doses = 4;
-        itemName = ItemName.SUPER_RESTORE;
+        itemName = ItemName.RESTORATION_POTION;
         defaultAction = "Drink";
     }
 
@@ -30,7 +30,7 @@ public class SuperRestore : Potion
 
         if (pStats == null || baseStats == null)
         {
-            Debug.LogError("[POTION] SuperRestore requires PlayerStats!");
+            Debug.LogError("[POTION] RestorationPotion requires PlayerStats!");
             return;
         }
 
@@ -71,6 +71,6 @@ public class SuperRestore : Potion
             pStats.magic = Mathf.Min(pStats.magic, baseStats.magic);
         }
 
-        Debug.Log($"[POTION] Drank super restore: Prayer restored, drained stats restored");
+        Debug.Log($"[POTION] Drank restoration: Prayer restored, drained stats restored");
     }
 }
