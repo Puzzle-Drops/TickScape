@@ -229,6 +229,7 @@ public class InventoryPanel : BasePanel
     /// <summary>
     /// Draw item being dragged at cursor position.
     /// SDK Reference: InventoryControls.draw() dragged item section
+    /// FIXED: Use ITEM_SIZE to maintain consistent appearance with inventory slots
     /// </summary>
     private void DrawDraggedItem(float panelX, float panelY, float scale)
     {
@@ -238,16 +239,19 @@ public class InventoryPanel : BasePanel
 
         if (sprite != null)
         {
-            float spriteWidth = sprite.width * scale;
-            float spriteHeight = sprite.height * scale;
+            // Use same size as inventory slots (ITEM_SIZE = 32)
+            float iconSize = ITEM_SIZE * scale;
 
-            // Scale the cursor location before adding to panel position
-            Rect spriteRect = new Rect(
-                panelX + (cursorLocation.x * scale) - spriteWidth / 2f,
-                panelY + (cursorLocation.y * scale) - spriteHeight / 2f,
-                spriteWidth,
-                spriteHeight
+            // Create bounds rect centered on cursor
+            Rect bounds = new Rect(
+                panelX + (cursorLocation.x * scale) - iconSize / 2f,
+                panelY + (cursorLocation.y * scale) - iconSize / 2f,
+                iconSize,
+                iconSize
             );
+
+            // Fit sprite within bounds while maintaining aspect ratio
+            Rect spriteRect = GetAspectFitRect(bounds, sprite);
 
             // Draw at cursor with transparency
             Color oldColor = GUI.color;
@@ -624,4 +628,5 @@ public class InventoryPanel : BasePanel
     {
         return Object.FindAnyObjectByType<Player>();
     }
+
 }
