@@ -532,27 +532,55 @@ public class Player : Unit
             testHelm.slot = EquipmentSlot.HELMET;
             inventory[1] = testHelm;
 
-            // Add test food
-            Food testFood = new Food();
-            testFood.itemName = ItemName.KARAMBWAN;
-            testFood.healAmount = 18;
-            inventory[2] = testFood;
+            // Add food (2 of each type)
+            Ray ray1 = new Ray();
+            inventory[2] = ray1;
 
-            // Add test potions
-            SuperCombatPotion superCombat = new SuperCombatPotion();
-            inventory[3] = superCombat;
+            Ray ray2 = new Ray();
+            inventory[3] = ray2;
 
-            BastionPotion bastion = new BastionPotion();
-            inventory[4] = bastion;
+            Octbwan octbwan1 = new Octbwan();
+            inventory[4] = octbwan1;
 
-            SaradominBrew brew = new SaradominBrew();
-            inventory[5] = brew;
+            Octbwan octbwan2 = new Octbwan();
+            inventory[5] = octbwan2;
 
-            SuperRestore restore = new SuperRestore();
-            inventory[6] = restore;
+            // Add potions (2 of each type)
+            StrengthPotion strength1 = new StrengthPotion();
+            inventory[6] = strength1;
 
-            StaminaPotion stamina = new StaminaPotion();
-            inventory[7] = stamina;
+            StrengthPotion strength2 = new StrengthPotion();
+            inventory[7] = strength2;
+
+            RangePotion range1 = new RangePotion();
+            inventory[8] = range1;
+
+            RangePotion range2 = new RangePotion();
+            inventory[9] = range2;
+
+            MagePotion mage1 = new MagePotion();
+            inventory[10] = mage1;
+
+            MagePotion mage2 = new MagePotion();
+            inventory[11] = mage2;
+
+            VitalityPotion vitality1 = new VitalityPotion();
+            inventory[12] = vitality1;
+
+            VitalityPotion vitality2 = new VitalityPotion();
+            inventory[13] = vitality2;
+
+            RestorationPotion restoration1 = new RestorationPotion();
+            inventory[14] = restoration1;
+
+            RestorationPotion restoration2 = new RestorationPotion();
+            inventory[15] = restoration2;
+
+            RunPotion run1 = new RunPotion();
+            inventory[16] = run1;
+
+            RunPotion run2 = new RunPotion();
+            inventory[17] = run2;
 
             Debug.Log("[Player] Added test items to inventory");
         }
@@ -1539,5 +1567,6 @@ public class Player : Unit
     }
 
     #endregion
+
 
 }
