@@ -276,6 +276,9 @@ public class EquipmentPanel : BasePanel
     public override void OnMouseUp()
     {
         clickedSlot = null;
+        
+        // Clear hover preview when unequipping
+        HoverPreview.Clear();
     }
 
     /// <summary>
@@ -285,6 +288,26 @@ public class EquipmentPanel : BasePanel
     {
         // Update hovered slot
         hoveredSlot = GetClickedSlot(relativeX, relativeY);
+
+        // Update hover preview for tooltips
+        Player player = FindPlayer();
+        if (player != null && hoveredSlot.HasValue)
+        {
+            Equipment equipment = GetEquipmentInSlot(player, hoveredSlot.Value);
+            if (equipment != null)
+            {
+                // Show "Unequip" tooltip with no effects (equipment doesn't preview stat changes)
+                HoverPreview.SetHover(equipment, player, Input.mousePosition, "Unequip");
+            }
+            else
+            {
+                HoverPreview.Clear();
+            }
+        }
+        else
+        {
+            HoverPreview.Clear();
+        }
     }
 
     /// <summary>
@@ -371,4 +394,5 @@ public class EquipmentPanel : BasePanel
     {
         return Object.FindAnyObjectByType<Player>();
     }
+
 }
