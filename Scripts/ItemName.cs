@@ -28,7 +28,6 @@ public enum ItemName
     
     // Food
     OCTBWAN,
-    SHARK,
     RAY,
 
     // Potions
@@ -40,3 +39,4 @@ public enum ItemName
     RUN_POTION
 
 }
+
