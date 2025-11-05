@@ -50,6 +50,12 @@ public class UISettings : MonoBehaviour
     [Tooltip("Enable WASD camera controls")]
     public bool wasdCamera = false;
 
+    [Tooltip("Show southwest tile for mobs")]
+    public bool showSouthwestTile = false;
+
+    [Tooltip("Show item tooltips")]
+    public bool showTooltips = true;
+
     [Header("UI State")]
     [Tooltip("Is a key currently being bound?")]
     public bool isKeybinding = false;
@@ -285,6 +291,8 @@ public class UISettings : MonoBehaviour
         PlayerPrefs.SetInt("UI_CombatKey", (int)combatKey);
         PlayerPrefs.SetInt("UI_Metronome", metronome ? 1 : 0);
         PlayerPrefs.SetInt("UI_WasdCamera", wasdCamera ? 1 : 0);
+        PlayerPrefs.SetInt("UI_ShowSouthwestTile", showSouthwestTile ? 1 : 0);
+        PlayerPrefs.SetInt("UI_ShowTooltips", showTooltips ? 1 : 0);
 
         // Save tile highlight colors
         PlayerPrefs.SetString("UI_HoverColor", ColorToString(hoverColor));
@@ -352,6 +360,8 @@ public class UISettings : MonoBehaviour
         combatKey = (KeyCode)PlayerPrefs.GetInt("UI_CombatKey", (int)KeyCode.F1);
         metronome = PlayerPrefs.GetInt("UI_Metronome", 0) == 1;
         wasdCamera = PlayerPrefs.GetInt("UI_WasdCamera", 0) == 1;
+        showSouthwestTile = PlayerPrefs.GetInt("UI_ShowSouthwestTile", 0) == 1;
+        showTooltips = PlayerPrefs.GetInt("UI_ShowTooltips", 1) == 1; // Default ON
 
         // Load tile highlight colors
         hoverColor = StringToColor(
