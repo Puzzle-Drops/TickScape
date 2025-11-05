@@ -1,18 +1,18 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 /// <summary>
-/// Super combat potion - boosts attack, strength, and defence.
+/// Strength potion - boosts attack, strength, and defence.
 /// SDK Reference: SuperCombatPotion.ts
 /// 
 /// BOOST FORMULA: floor(baseStat * 0.15) + 5
 /// Example: 99 attack → floor(99 * 0.15) + 5 = 14 + 5 = +19 levels (to 118)
 /// </summary>
-public class SuperCombatPotion : Potion
+public class StrengthPotion : Potion
 {
-    public SuperCombatPotion()
+    public StrengthPotion()
     {
         doses = 4;
-        itemName = ItemName.SUPER_COMBAT_POTION;
+        itemName = ItemName.STRENGTH_POTION;
         defaultAction = "Drink";
     }
 
@@ -48,7 +48,7 @@ public class SuperCombatPotion : Potion
         player.currentStats.defence = Mathf.Max(player.currentStats.defence, oldDefence);
         int actualDefenceBoost = player.currentStats.defence - oldDefence;
 
-        Debug.Log($"[POTION] Drank super combat: ATK +{actualAttackBoost}, STR +{actualStrengthBoost}, DEF +{actualDefenceBoost}");
+        Debug.Log($"[POTION] Drank strength: ATK +{actualAttackBoost}, STR +{actualStrengthBoost}, DEF +{actualDefenceBoost}");
     }
 
 }
