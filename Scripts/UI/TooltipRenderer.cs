@@ -44,7 +44,7 @@ public static class TooltipRenderer
         var lines = new List<TooltipLine>();
 
         // Line 1: Action + Item Name
-        string action = GetActionText(hover.item);
+        string action = GetActionText(hover);
         string itemName = GetItemDisplayName(hover.item);
         lines.Add(new TooltipLine(action, itemName, LineType.Header));
 
@@ -75,14 +75,21 @@ public static class TooltipRenderer
         return lines;
     }
 
-    /// <summary>
-    /// Get action text based on item type.
+/// <summary>
+    /// Get action text based on item type or custom action.
     /// </summary>
-    private static string GetActionText(Item item)
+    private static string GetActionText(HoverInfo hover)
     {
-        if (item is Potion) return "Drink";
-        if (item is Food) return "Eat";
-        if (item is Equipment) return "Equip";
+        // Use custom action if provided (e.g., "Unequip" from equipment panel)
+        if (!string.IsNullOrEmpty(hover.action))
+        {
+            return hover.action;
+        }
+
+        // Otherwise determine from item type
+        if (hover.item is Potion) return "Drink";
+        if (hover.item is Food) return "Eat";
+        if (hover.item is Equipment) return "Equip";
         return "Use";
     }
 
@@ -292,4 +299,5 @@ public static class TooltipRenderer
         Negative,
         Spacer
     }
+
 }
