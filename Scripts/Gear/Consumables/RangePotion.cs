@@ -1,19 +1,19 @@
 using UnityEngine;
 
 /// <summary>
-/// Bastion potion - boosts range and defence.
+/// Range potion - boosts range and defence.
 /// SDK Reference: BastionPotion.ts
 /// 
 /// BOOST FORMULAS:
 /// Range: floor(baseStat * 0.10) + 4
 /// Defence: floor(baseStat * 0.15) + 5
 /// </summary>
-public class BastionPotion : Potion
+public class RangePotion : Potion
 {
-    public BastionPotion()
+    public RangePotion()
     {
         doses = 4;
-        itemName = ItemName.BASTION_POTION;
+        itemName = ItemName.RANGE_POTION;
         defaultAction = "Drink";
     }
 
@@ -41,7 +41,7 @@ public class BastionPotion : Potion
         player.currentStats.defence = Mathf.Max(player.currentStats.defence, oldDefence);
         int actualDefenceBoost = player.currentStats.defence - oldDefence;
 
-        Debug.Log($"[POTION] Drank bastion: RNG +{actualRangeBoost}, DEF +{actualDefenceBoost}");
+        Debug.Log($"[POTION] Drank range: RNG +{actualRangeBoost}, DEF +{actualDefenceBoost}");
     }
 
     public override float Weight
