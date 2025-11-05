@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// Saradomin brew - heals HP, boosts defence, but drains combat stats.
+/// Vitality potion - heals HP, boosts defence, but drains combat stats.
 /// SDK Reference: SaradominBrew.ts
 /// 
 /// EFFECTS:
@@ -9,12 +9,12 @@ using UnityEngine;
 /// - Defence boost: floor(currentDef * 0.20) + 2 (capped at floor(baseDef * 0.20) + 2)
 /// - Drains: floor(currentStat * 0.10) + 2 for attack/strength/range/magic
 /// </summary>
-public class SaradominBrew : Potion
+public class VitalityPotion : Potion
 {
-    public SaradominBrew()
+    public VitalityPotion()
     {
         doses = 4;
-        itemName = ItemName.SARADOMIN_BREW;
+        itemName = ItemName.VITALITY_POTION;
         defaultAction = "Drink";
     }
 
@@ -65,6 +65,6 @@ public class SaradominBrew : Potion
         player.currentStats.magic = Mathf.Max(1,
             Mathf.Min(player.currentStats.magic, player.stats.magic));
 
-        Debug.Log($"[POTION] Drank brew: Healed {healAmount}, DEF +{actualDefenceBoost}, combat stats drained");
+        Debug.Log($"[POTION] Drank vitality: Healed {healAmount}, DEF +{actualDefenceBoost}, combat stats drained");
     }
 }
