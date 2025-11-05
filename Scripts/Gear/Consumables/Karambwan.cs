@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// Karambwan - Special food that can be "combo'd" with other food.
+/// Octbwan - Special food that can be "combo'd" with other food.
 /// SDK Reference: Karambwan.ts (referenced in Eating.ts)
 /// 
 /// UNIQUE MECHANICS:
@@ -11,22 +11,22 @@ using UnityEngine;
 /// - Critical for high-level PvM (tick-perfect healing)
 /// 
 /// OSRS COMBO EATING:
-/// Tick 0: Eat shark (22 HP) + Karambwan (18 HP) = 40 HP in one tick
+/// Tick 0: Eat shark (22 HP) + Octbwan (18 HP) = 40 HP in one tick
 /// Tick 1-2: Both food delays active
 /// Tick 3: Can eat again
 /// </summary>
-public class Karambwan : Food
+public class Octbwan : Food
 {
-    public Karambwan()
+    public Octbwan()
     {
         healAmount = 18;
         Weight = 0.226f;
         defaultAction = "Eat";
-        itemName = ItemName.KARAMBWAN;
+        itemName = ItemName.OCTBWAN;
     }
 
     /// <summary>
-    /// Karambwan uses combo eating logic.
+    /// Octbwan uses combo eating logic.
     /// SDK Reference: Eating.eatComboFood() in Eating.ts lines 69-79
     /// </summary>
     public override void InventoryLeftClick(Player player)
