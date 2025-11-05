@@ -25,6 +25,7 @@ public class TileHighlight : MonoBehaviour
 
     // NPC highlight management
     private Dictionary<Unit, GameObject> npcHighlights = new Dictionary<Unit, GameObject>();
+    private Dictionary<Unit, GameObject> npcSouthwestHighlights = new Dictionary<Unit, GameObject>();
     private List<Unit> currentNPCs = new List<Unit>();
 
     void Start()
@@ -85,12 +86,19 @@ public class TileHighlight : MonoBehaviour
         if (playerTileHighlight != null) Destroy(playerTileHighlight);
         if (destinationHighlight != null) Destroy(destinationHighlight);
 
-        // Destroy all NPC highlights
-        foreach (var kvp in npcHighlights)
-        {
-            if (kvp.Value != null) Destroy(kvp.Value);
-        }
-        npcHighlights.Clear();
+// Destroy all NPC highlights
+foreach (var kvp in npcHighlights)
+{
+    if (kvp.Value != null) Destroy(kvp.Value);
+}
+npcHighlights.Clear();
+
+// Destroy all southwest highlights
+foreach (var kvp in npcSouthwestHighlights)
+{
+    if (kvp.Value != null) Destroy(kvp.Value);
+}
+npcSouthwestHighlights.Clear();
 
         // Recreate highlights with new colors
         CreateInitialHighlights();
@@ -208,19 +216,34 @@ public class TileHighlight : MonoBehaviour
         }
 
         // Remove highlights for NPCs that no longer exist
-        List<Unit> toRemove = new List<Unit>();
-        foreach (var kvp in npcHighlights)
-        {
-            if (!currentNPCs.Contains(kvp.Key))
-            {
-                Destroy(kvp.Value);
-                toRemove.Add(kvp.Key);
-            }
-        }
-        foreach (Unit unit in toRemove)
-        {
-            npcHighlights.Remove(unit);
-        }
+List<Unit> toRemove = new List<Unit>();
+foreach (var kvp in npcHighlights)
+{
+    if (!currentNPCs.Contains(kvp.Key))
+    {
+        Destroy(kvp.Value);
+        toRemove.Add(kvp.Key);
+    }
+}
+foreach (Unit unit in toRemove)
+{
+    npcHighlights.Remove(unit);
+}
+
+// Remove southwest highlights for NPCs that no longer exist
+toRemove.Clear();
+foreach (var kvp in npcSouthwestHighlights)
+{
+    if (!currentNPCs.Contains(kvp.Key))
+    {
+        Destroy(kvp.Value);
+        toRemove.Add(kvp.Key);
+    }
+}
+foreach (Unit unit in toRemove)
+{
+    npcSouthwestHighlights.Remove(unit);
+}
 
         // Add or update highlights for current NPCs
         foreach (Unit npc in currentNPCs)
@@ -245,14 +268,51 @@ public class TileHighlight : MonoBehaviour
                 highlight = npcHighlights[npc];
             }
 
-            // Update position based on NPC's SW corner (gridPosition)
-            // SDK Reference: outline.position.x = x; outline.position.z = y;
-            // The LineRenderer corners are relative to this position and extend based on size
-            Vector3 worldPos = GridManager.Instance.GridToWorld(npc.gridPosition);
-            highlight.transform.position = worldPos;
+// Update position based on NPC's SW corner (gridPosition)
+// SDK Reference: outline.position.x = x; outline.position.z = y;
+// The LineRenderer corners are relative to this position and extend based on size
+Vector3 worldPos = GridManager.Instance.GridToWorld(npc.gridPosition);
+highlight.transform.position = worldPos;
 
-            // Show/hide based on NPC state
-            highlight.SetActive(!npc.IsDying());
+// Show/hide based on NPC state
+highlight.SetActive(!npc.IsDying());
+
+// Handle southwest tile highlight (1x1 at SW corner)
+if (UISettings.Instance != null && UISettings.Instance.showSouthwestTile)
+{
+    GameObject swHighlight;
+
+    // Create or get southwest highlight (always 1x1)
+    if (!npcSouthwestHighlights.ContainsKey(npc))
+    {
+        // Get NPC color from UISettings
+        Color npcColor = UISettings.Instance.npcTileColor;
+
+        // Create 1x1 highlight at SW corner
+        swHighlight = CreateTileBorder($"NPC_{npc.UnitName()}_SW_Highlight", 
+                                       npcMaterial, npcColor, 1);
+        npcSouthwestHighlights[npc] = swHighlight;
+    }
+    else
+    {
+        swHighlight = npcSouthwestHighlights[npc];
+    }
+
+    // Position at SW corner (same as main highlight position)
+    swHighlight.transform.position = worldPos;
+
+    // Show/hide based on NPC state
+    swHighlight.SetActive(!npc.IsDying());
+}
+else
+{
+    // Remove southwest highlight if toggle is off
+    if (npcSouthwestHighlights.ContainsKey(npc))
+    {
+        Destroy(npcSouthwestHighlights[npc]);
+        npcSouthwestHighlights.Remove(npc);
+    }
+}
         }
     }
 
