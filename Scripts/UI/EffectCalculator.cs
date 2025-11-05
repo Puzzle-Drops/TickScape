@@ -19,25 +19,29 @@ public static class EffectCalculator
         {
             effects.AddRange(CalculateFoodEffects(food, player));
         }
-        else if (item is SaradominBrew)
+        else if (item is VitalityPotion)
         {
-            effects.AddRange(CalculateBrewEffects(player));
+            effects.AddRange(CalculateVitalityEffects(player));
         }
-        else if (item is SuperCombatPotion)
+        else if (item is StrengthPotion)
         {
-            effects.AddRange(CalculateSuperCombatEffects(player));
+            effects.AddRange(CalculateStrengthEffects(player));
         }
-        else if (item is BastionPotion)
+        else if (item is RangePotion)
         {
-            effects.AddRange(CalculateBastionEffects(player));
+            effects.AddRange(CalculateRangeEffects(player));
         }
-        else if (item is SuperRestore)
+        else if (item is MagePotion)
         {
-            effects.AddRange(CalculateSuperRestoreEffects(player));
+            effects.AddRange(CalculateMageEffects(player));
         }
-        else if (item is StaminaPotion)
+        else if (item is RestorationPotion)
         {
-            effects.AddRange(CalculateStaminaEffects(player));
+            effects.AddRange(CalculateRestorationEffects(player));
+        }
+        else if (item is RunPotion)
+        {
+            effects.AddRange(CalculateRunEffects(player));
         }
 
         // Filter out zero effects
@@ -68,10 +72,10 @@ public static class EffectCalculator
     }
 
     /// <summary>
-    /// Calculate Saradomin Brew effects.
-    /// Formula from SaradominBrew.cs
+    /// Calculate Vitality Potion effects.
+    /// Formula from VitalityPotion.cs
     /// </summary>
-    private static List<StatEffect> CalculateBrewEffects(Player player)
+    private static List<StatEffect> CalculateVitalityEffects(Player player)
     {
         var effects = new List<StatEffect>();
 
@@ -130,11 +134,11 @@ public static class EffectCalculator
     }
 
     /// <summary>
-    /// Calculate Super Combat effects.
-    /// Formula from SuperCombatPotion.cs
+    /// Calculate Strength Potion effects.
+    /// Formula from StrengthPotion.cs
     /// Boost calculated from BASE, applied to CURRENT, capped, never lowered.
     /// </summary>
-    private static List<StatEffect> CalculateSuperCombatEffects(Player player)
+    private static List<StatEffect> CalculateStrengthEffects(Player player)
     {
         var effects = new List<StatEffect>();
 
@@ -172,11 +176,11 @@ public static class EffectCalculator
     }
 
     /// <summary>
-    /// Calculate Bastion Potion effects.
-    /// Formula from BastionPotion.cs
+    /// Calculate Range Potion effects.
+    /// Formula from RangePotion.cs
     /// Boost calculated from BASE, applied to CURRENT, capped, never lowered.
     /// </summary>
-    private static List<StatEffect> CalculateBastionEffects(Player player)
+    private static List<StatEffect> CalculateRangeEffects(Player player)
     {
         var effects = new List<StatEffect>();
 
@@ -204,11 +208,43 @@ public static class EffectCalculator
     }
 
     /// <summary>
-    /// Calculate Super Restore effects.
-    /// Formula from SuperRestore.cs
+    /// Calculate Mage Potion effects.
+    /// Formula from MagePotion.cs
+    /// Boost calculated from BASE, applied to CURRENT, capped, never lowered.
+    /// </summary>
+    private static List<StatEffect> CalculateMageEffects(Player player)
+    {
+        var effects = new List<StatEffect>();
+
+        // Boost magic
+        int currentMag = player.currentStats.magic;
+        int baseMag = player.stats.magic;
+        int magicBoost = Mathf.FloorToInt(baseMag * 0.1f) + 4;
+        int newMag = currentMag + magicBoost;
+        newMag = Mathf.Min(newMag, baseMag + magicBoost); // Cap at base + boost
+        newMag = Mathf.Max(newMag, currentMag); // Never lower
+
+        effects.Add(new StatEffect("Magic", newMag - currentMag, currentMag, newMag));
+
+        // Boost defence
+        int currentDef = player.currentStats.defence;
+        int baseDef = player.stats.defence;
+        int defenceBoost = Mathf.FloorToInt(baseDef * 0.15f) + 5;
+        int newDef = currentDef + defenceBoost;
+        newDef = Mathf.Min(newDef, baseDef + defenceBoost); // Cap at base + boost
+        newDef = Mathf.Max(newDef, currentDef); // Never lower
+
+        effects.Add(new StatEffect("Defence", newDef - currentDef, currentDef, newDef));
+
+        return effects;
+    }
+    
+    /// <summary>
+    /// Calculate Restoration Potion effects.
+    /// Formula from RestorationPotion.cs
     /// IMPORTANT: Restores never lower stats, only increase them (up to base).
     /// </summary>
-    private static List<StatEffect> CalculateSuperRestoreEffects(Player player)
+    private static List<StatEffect> CalculateRestorationEffects(Player player)
     {
         var effects = new List<StatEffect>();
 
@@ -273,10 +309,10 @@ public static class EffectCalculator
     }
 
     /// <summary>
-    /// Calculate Stamina Potion effects.
-    /// Formula from StaminaPotion.cs
+    /// Calculate Run Potion effects.
+    /// Formula from RunPotion.cs
     /// </summary>
-    private static List<StatEffect> CalculateStaminaEffects(Player player)
+    private static List<StatEffect> CalculateRunEffects(Player player)
     {
         var effects = new List<StatEffect>();
 
@@ -301,4 +337,5 @@ public static class EffectCalculator
 
         return effects;
     }
+
 }
