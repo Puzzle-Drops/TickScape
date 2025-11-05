@@ -9,10 +9,10 @@ public static class HoverPreview
 {
     public static HoverInfo currentHover = null;
 
-    /// <summary>
+/// <summary>
     /// Set the currently hovered item with all calculated effects.
     /// </summary>
-    public static void SetHover(Item item, Player player, Vector2 mousePosition)
+    public static void SetHover(Item item, Player player, Vector2 mousePosition, string customAction = null)
     {
         if (item == null || player == null)
         {
@@ -21,7 +21,7 @@ public static class HoverPreview
         }
 
         var effects = EffectCalculator.CalculateEffects(item, player);
-        currentHover = new HoverInfo(item, player, mousePosition, effects);
+        currentHover = new HoverInfo(item, player, mousePosition, effects, customAction);
     }
 
     /// <summary>
@@ -53,4 +53,5 @@ public static class HoverPreview
         var prayerEffect = currentHover.effects.FirstOrDefault(e => e.statName == "Prayer");
         return prayerEffect?.change ?? 0;
     }
+
 }
