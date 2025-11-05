@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// Stamina potion - restores run energy and provides stamina effect.
+/// Run potion - restores run energy and provides stamina effect.
 /// SDK Reference: StaminaPotion.ts
 /// 
 /// EFFECTS:
@@ -9,12 +9,12 @@ using UnityEngine;
 /// - Stamina effect for 200 ticks (2 minutes)
 /// - Stamina effect reduces run drain to 30% of normal
 /// </summary>
-public class StaminaPotion : Potion
+public class RunPotion : Potion
 {
-    public StaminaPotion()
+    public RunPotion()
     {
         doses = 4;
-        itemName = ItemName.STAMINA_POTION;
+        itemName = ItemName.RUN_POTION;
         defaultAction = "Drink";
     }
 
@@ -29,7 +29,7 @@ public class StaminaPotion : Potion
         PlayerStats pStats = player.currentStats as PlayerStats;
         if (pStats == null)
         {
-            Debug.LogError("[POTION] StaminaPotion requires PlayerStats!");
+            Debug.LogError("[POTION] RunPotion requires PlayerStats!");
             return;
         }
 
@@ -40,6 +40,6 @@ public class StaminaPotion : Potion
         pStats.run += 2000;
         pStats.run = Mathf.Clamp(pStats.run, 0, 10000);
 
-        Debug.Log($"[POTION] Drank stamina: Run energy +2000, stamina effect active for 200 ticks");
+        Debug.Log($"[POTION] Drank run: Run energy +2000, stamina effect active for 200 ticks");
     }
 }
