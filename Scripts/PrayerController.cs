@@ -270,41 +270,41 @@ public class PrayerController
         }
     }
 
-/// <summary>
-/// Force deactivate all prayers immediately (used when out of prayer points).
-/// Does NOT use TogglePrayer() - bypasses flicking mechanism.
-/// </summary>
-public void ForceDeactivateAll()
-{
-    foreach (Prayer prayer in prayers)
+    /// <summary>
+    /// Force deactivate all prayers immediately (used when out of prayer points).
+    /// Does NOT use TogglePrayer() - bypasses flicking mechanism.
+    /// </summary>
+    public void ForceDeactivateAll()
     {
-        prayer.isActive = false;
-        prayer.isLit = false;
-        prayer.nextActiveState = false;
-    }
-    unit.currentStats.prayer = 0;
-    hasQuickPrayersActivated = false;
-}
-
-/// <summary>
-/// Deactivate quick prayers by simulating clicks on all currently lit prayers.
-/// Uses TogglePrayer() to support prayer flicking.
-/// SDK Reference: This is the "panic button" - turns off ALL active prayers, not just marked ones.
-/// </summary>
-public void DeactivateQuickPrayers()
-{
-    hasQuickPrayersActivated = false;
-
-    // Toggle off ALL currently lit prayers (not just quick prayer selections)
-    foreach (Prayer prayer in prayers)
-    {
-        if (prayer.isLit)
+        foreach (Prayer prayer in prayers)
         {
-            TogglePrayer(prayer, unit);
-            Debug.Log($"[QuickPrayer] Toggled off {prayer.GetName()}");
+            prayer.isActive = false;
+            prayer.isLit = false;
+            prayer.nextActiveState = false;
+        }
+        unit.currentStats.prayer = 0;
+        hasQuickPrayersActivated = false;
+    }
+
+    /// <summary>
+    /// Deactivate quick prayers by simulating clicks on all currently lit prayers.
+    /// Uses TogglePrayer() to support prayer flicking.
+    /// SDK Reference: This is the "panic button" - turns off ALL active prayers, not just marked ones.
+    /// </summary>
+    public void DeactivateQuickPrayers()
+    {
+        hasQuickPrayersActivated = false;
+
+        // Toggle off ALL currently lit prayers (not just quick prayer selections)
+        foreach (Prayer prayer in prayers)
+        {
+            if (prayer.isLit)
+            {
+                TogglePrayer(prayer, unit);
+                Debug.Log($"[QuickPrayer] Toggled off {prayer.GetName()}");
+            }
         }
     }
-}
 
     /// <summary>
     /// Check and trigger Redemption prayer healing.
@@ -318,7 +318,7 @@ public void DeactivateQuickPrayers()
             unit.currentStats.hitpoint <= Mathf.Floor(unit.stats.hitpoint / 10f))
         {
             // Deactivate all prayers
-            DeactivateAll();
+            ForceDeactivateAll();
 
             // Heal 25% of prayer level
             unit.currentStats.hitpoint += Mathf.FloorToInt(unit.stats.prayer / 4f);
@@ -492,38 +492,38 @@ public void DeactivateQuickPrayers()
         return prayer != null && prayer.isActive;
     }
 
-public void ActivateQuickPrayers()
-{
-    if (unit.currentStats.prayer <= 0)
+    public void ActivateQuickPrayers()
     {
-        Debug.Log("[PrayerController] Cannot activate quick prayers - out of prayer!");
-        return;
-    }
-
-    hasQuickPrayersActivated = true;
-
-    // Get selections from UISettings
-    if (UISettings.Instance != null)
-    {
-        foreach (PrayerType prayerType in UISettings.Instance.quickPrayerSelections)
+        if (unit.currentStats.prayer <= 0)
         {
-            Prayer prayer = FindPrayerByType(prayerType);
-            if (prayer != null && unit.stats.prayer >= prayer.GetLevelRequirement())
+            Debug.Log("[PrayerController] Cannot activate quick prayers - out of prayer!");
+            return;
+        }
+
+        hasQuickPrayersActivated = true;
+
+        // Get selections from UISettings
+        if (UISettings.Instance != null)
+        {
+            foreach (PrayerType prayerType in UISettings.Instance.quickPrayerSelections)
             {
-                // Only toggle prayers that aren't already lit
-                if (!prayer.isLit)
+                Prayer prayer = FindPrayerByType(prayerType);
+                if (prayer != null && unit.stats.prayer >= prayer.GetLevelRequirement())
                 {
-                    TogglePrayer(prayer, unit);
-                    Debug.Log($"[QuickPrayer] Toggled on {prayer.GetName()}");
-                }
-                else
-                {
-                    Debug.Log($"[QuickPrayer] Skipped {prayer.GetName()} (already active)");
+                    // Only toggle prayers that aren't already lit
+                    if (!prayer.isLit)
+                    {
+                        TogglePrayer(prayer, unit);
+                        Debug.Log($"[QuickPrayer] Toggled on {prayer.GetName()}");
+                    }
+                    else
+                    {
+                        Debug.Log($"[QuickPrayer] Skipped {prayer.GetName()} (already active)");
+                    }
                 }
             }
         }
     }
-}
 
     /// <summary>
     /// Deactivate all prayers and quick prayer state.
