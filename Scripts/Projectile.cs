@@ -159,16 +159,18 @@ public class Projectile
             this.damage = to.currentStats.hitpoint;
         }
 
-        // Initialize start location (center of attacker)
+        // Initialize start location (center of attacker's VISUAL position)
+        // CRITICAL FIX: Use perceived location so projectile spawns where attacker LOOKS
+        // SDK Reference: Projectile.ts uses entity's visual position, not grid position
+        Vector2 fromPerceivedStart = from.GetPerceivedLocation(0);
         this.startLocation = new Vector2(
-            from.gridPosition.x + (from.size - 1) / 2f,
-            from.gridPosition.y - (from.size - 1) / 2f
+            fromPerceivedStart.x + (from.size - 1) / 2f,
+            fromPerceivedStart.y + (from.size - 1) / 2f
         );
         this.currentLocation = this.startLocation;
         this.currentHeight = 0.75f + this.options.verticalOffset; // Projectile origin height
 
         // Calculate distance using Chebyshev distance
-        // SDK Reference: Projectile.ts lines 132-146
         this.distance = 0;
 
         if (weapon == null || IsMeleeStyle())
@@ -284,7 +286,7 @@ public class Projectile
         int targetSize = to.size;
 
         float x = toPerceivedLoc.x + (targetSize - 1) / 2f;
-        float y = toPerceivedLoc.y - (targetSize - 1) / 2f;
+        float y = toPerceivedLoc.y + (targetSize - 1) / 2f;
 
         return new Vector3(x, endHeight, y);
     }
@@ -293,17 +295,18 @@ public class Projectile
     /// Get current projectile position with interpolation.
     /// SDK Reference: Projectile.getPerceivedLocation() in Projectile.ts
     /// 
-    /// CRITICAL FIX: Use attacker's perceived location as start point, not gridPosition.
-    /// This ensures projectile spawns where the unit APPEARS to be, not where they
-    /// actually are on the server tick grid.
+    /// CRITICAL: Use FROZEN startLocation (set at creation), not attacker's current position.
+    /// This prevents the projectile from "jumping" when the attacker moves after firing.
     /// </summary>
     public Vector3 GetPerceivedLocation(float tickPercent)
     {
-        // Use attacker's current visual position as start point
-        Vector2 fromPerceived = from.GetPerceivedLocation(tickPercent);
-        Vector3 start = new Vector3(fromPerceived.x, currentHeight, fromPerceived.y);
+        // Use FROZEN start location (set once at projectile creation)
+        // DO NOT use from.GetPerceivedLocation() - that changes as attacker moves!
+        Vector3 start = new Vector3(startLocation.x, currentHeight, startLocation.y);
 
+        // Target can still move - we track them
         Vector3 end = GetTargetDestination(tickPercent);
+
         float percent = GetPercent(tickPercent);
 
         return interpolator.Interpolate(start, end, percent);
@@ -349,12 +352,8 @@ public class Projectile
     /// </summary>
     public void OnTick()
     {
-        // Update current location (for smooth movement)
-        Vector3 target = GetTargetDestination(0f);
-        currentLocation = new Vector2(
-            Mathf.Lerp(currentLocation.x, target.x, 1f / (remainingDelay + 1)),
-            Mathf.Lerp(currentLocation.y, target.z, 1f / (remainingDelay + 1))
-        );
+        // REMOVED: currentLocation update - it conflicts with GetPerceivedLocation()
+        // The interpolation system already handles smooth movement via GetPerceivedLocation()
 
         remainingDelay--;
         age++;
