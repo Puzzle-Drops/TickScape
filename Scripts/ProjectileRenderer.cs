@@ -32,10 +32,12 @@ public class ProjectileRenderer : MonoBehaviour
         if (WorldManager.Instance == null)
             return;
 
+        // Get tick percent for smooth interpolation
+        // This ensures projectiles update in sync with unit movement
         float tickPercent = WorldManager.Instance.GetTickPercent();
 
-        // Update all projectile visuals
-        // Projectiles handle their own spawning/despawning
+        // Update all projectile visuals every frame for smooth movement
+        // SDK Pattern: Projectiles interpolate between ticks using tickPercent
         foreach (var projectile in unit.incomingProjectiles)
         {
             if (!projectile.options.hidden)
