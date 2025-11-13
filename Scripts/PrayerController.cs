@@ -266,7 +266,7 @@ public class PrayerController
         // Deactivate if out of prayer
         if (unit.currentStats.prayer <= 0)
         {
-            ForceDeactivateAll(); //Use force method (no flicking when out of prayer)
+            ForceDeactivateAll();  // Use force method (no flicking when out of prayer)
         }
     }
 
@@ -525,34 +525,23 @@ public class PrayerController
         }
     }
 
-    /// <summary>
-    /// Deactivate all prayers and quick prayer state.
-    /// </summary>
-    public void DeactivateAllPrayers()
-    {
-        hasQuickPrayersActivated = false;
-        foreach (Prayer prayer in prayers)
-        {
-            prayer.isActive = false;
-            prayer.isLit = false;
-            prayer.nextActiveState = false;
-        }
-        drainCounter = 0;
-    }
 
     /// <summary>
     /// Toggle quick prayers on/off.
+    /// ON: Activates marked prayers that aren't already lit
+    /// OFF: Deactivates ALL currently lit prayers (panic button)
     /// </summary>
     public void ToggleQuickPrayers()
     {
         if (hasQuickPrayersActivated)
         {
-            DeactivateAllPrayers();
-            Debug.Log("[QuickPrayer] Deactivated all prayers");
+            DeactivateQuickPrayers();  // CHANGED: Use new method that supports flicking
+            Debug.Log("[QuickPrayer] Deactivated all active prayers");
         }
         else
         {
             ActivateQuickPrayers();
+            Debug.Log("[QuickPrayer] Activated marked quick prayers");
         }
     }
 
@@ -571,6 +560,5 @@ public class PrayerController
             }
         }
     }
-
 
 }
