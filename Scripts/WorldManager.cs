@@ -63,11 +63,7 @@ public class WorldManager : MonoBehaviour
         // Get all entities from GridManager
         var entities = GridManager.Instance.GetAllEntities();
 
-        // ===== PHASE 0: Save Positions for Lerping =====
-        foreach (var entity in entities)
-        {
-            entity.OnTickStart();
-        }
+        // Phase 0 removed - Units now handle their own perceivedLocation updates
 
         // ===== NPCs/MOBS COMPLETE THEIR FULL CYCLE FIRST =====
         // SDK Reference: World.ts lines 127-145

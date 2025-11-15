@@ -567,13 +567,12 @@ public class Mob : Unit
         ProcessIncomingAttacks();
 
         // SDK spawn delay - don't move until age reaches 0
-        // SDK Reference: Mob.ts line 195-198
         if (age > 0)
             return;
 
-        // Save position for visual interpolation
+        // Save position for visual interpolation BEFORE moving
         // SDK Reference: Mob.ts line 199 - perceivedLocation = { x: this.location.x, y: this.location.y }
-        // Note: Entity's OnTickStart() handles this, but SDK explicitly sets it here too
+        perceivedLocation = new Vector2(gridPosition.x, gridPosition.y);
 
         // Update line of sight BEFORE movement (for movement decisions)
         // SDK Reference: Mob.ts line 201

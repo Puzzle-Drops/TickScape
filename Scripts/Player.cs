@@ -611,34 +611,12 @@ public class Player : Unit
         pathCount_Debug = path.Count;
     }
 
-    // CRITICAL: Override Entity's LateUpdate to prevent position conflict
-    void LateUpdate()
-    {
-        // We handle our own position from perceivedLocation
-        // Do NOT call base.LateUpdate() which would interfere
+    // Player handles its own visual updates since it has special clientTick system
+    // The base Unit.LateUpdate will now call our overridden GetPerceivedLocation
+    // which returns the already-smooth perceivedLocation from clientTick.
+    // So we can remove Player's custom LateUpdate entirely and let Unit handle it!
 
-        if (GridManager.Instance == null)
-            return;
-
-        // Set visual position from perceivedLocation (SDK-style)
-        Vector3 worldPos = new Vector3(
-            perceivedLocation.x * GridManager.Instance.tileSize,
-            0f,
-            perceivedLocation.y * GridManager.Instance.tileSize
-        );
-        transform.position = worldPos;
-
-        // Apply rotation to face movement/combat direction
-        float rotationRadians = GetPerceivedRotation(WorldManager.Instance.GetTickPercent());
-
-        // Convert to degrees and apply
-        // Note: In Unity, Y rotation of 0 = facing +Z (north)
-        // The SDK's angle system: 0 = west, increasing clockwise
-        // So we need to add 90 degrees to convert SDK angles to Unity
-        float rotationDegrees = rotationRadians * Mathf.Rad2Deg + 90f;
-        transform.rotation = Quaternion.Euler(0, rotationDegrees, 0);
-    }
-
+    // DELETE THE ENTIRE LateUpdate METHOD FROM PLAYER
     #endregion
 
     #region Stats Setup
@@ -1571,6 +1549,15 @@ public class Player : Unit
         }
 
         return _angle;
+    }
+
+    /// <summary>
+    /// Get perceived location - Player uses its own smooth system, no interpolation!
+    /// SDK Reference: Player.ts lines 652-654
+    /// </summary>
+    public override Vector2 GetPerceivedLocation(float tickPercent)
+    {
+        return perceivedLocation;  // Already smooth from clientTick, no interpolation needed!
     }
 
     /// <summary>

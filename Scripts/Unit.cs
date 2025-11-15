@@ -125,14 +125,19 @@ public abstract class Unit : Entity
         if (GridManager.Instance == null || WorldManager.Instance == null)
             return;
 
-        // Apply rotation to face movement/combat direction
         float tickPercent = WorldManager.Instance.GetTickPercent();
-        float rotationRadians = GetPerceivedRotation(tickPercent);
 
-        // Convert to degrees and apply
-        // Note: In Unity, Y rotation of 0 = facing +Z (north)
-        // The SDK's angle system: 0 = east, increasing clockwise
-        // So we need to add 90 degrees to convert SDK angles to Unity
+        // Handle visual position interpolation
+        Vector2 visualPos = GetPerceivedLocation(tickPercent);
+        Vector3 worldPos = new Vector3(
+            visualPos.x * GridManager.Instance.tileSize,
+            0f,
+            visualPos.y * GridManager.Instance.tileSize
+        );
+        transform.position = worldPos;
+
+        // Handle rotation
+        float rotationRadians = GetPerceivedRotation(tickPercent);
         float rotationDegrees = rotationRadians * Mathf.Rad2Deg + 90f;
         transform.rotation = Quaternion.Euler(0, rotationDegrees, 0);
     }
@@ -701,10 +706,10 @@ public abstract class Unit : Entity
     }
 
     /// <summary>
-    /// Get perceived location with interpolation.
+    /// Get perceived location with interpolation for smooth movement.
     /// SDK Reference: Unit.getPerceivedLocation() in Unit.ts lines 382-387
     /// </summary>
-    public virtual Vector2 GetPerceivedLocation(float tickPercent)
+    public override Vector2 GetPerceivedLocation(float tickPercent)
     {
         float perceivedX = Pathing.LinearInterpolation(perceivedLocation.x, gridPosition.x, tickPercent);
         float perceivedY = Pathing.LinearInterpolation(perceivedLocation.y, gridPosition.y, tickPercent);
@@ -715,7 +720,7 @@ public abstract class Unit : Entity
     /// Get perceived rotation for this unit (instant for mobs, overridden for players).
     /// SDK Reference: Unit.getPerceivedRotation() in Unit.ts lines 382-392
     /// </summary>
-    public virtual float GetPerceivedRotation(float tickPercent)
+    public override float GetPerceivedRotation(float tickPercent)
     {
         if (aggro != null)
         {

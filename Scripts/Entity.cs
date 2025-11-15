@@ -56,11 +56,6 @@ public class Entity : MonoBehaviour
         get { return CollisionType.BLOCK_MOVEMENT; }
     }
 
-    // Visual position tracking (for smooth lerping between ticks)
-    // SDK Reference: Unit.perceivedLocation in Unit.ts
-    private Vector2Int lastGridPosition;
-    private bool initialized = false;
-
     /// <summary>
     /// Check if this entity is currently dying (death animation playing).
     /// SDK Reference: Entity.ts line 32
@@ -102,6 +97,24 @@ public class Entity : MonoBehaviour
     }
 
     /// <summary>
+    /// Get perceived location for rendering. Base entities return logical position.
+    /// SDK Reference: Entity.ts getPerceivedLocation()
+    /// </summary>
+    public virtual Vector2 GetPerceivedLocation(float tickPercent)
+    {
+        return new Vector2(gridPosition.x, gridPosition.y);
+    }
+
+    /// <summary>
+    /// Get perceived rotation for rendering. Base entities have no rotation.
+    /// SDK Reference: Entity.ts getPerceivedRotation()
+    /// </summary>
+    public virtual float GetPerceivedRotation(float tickPercent)
+    {
+        return 0f;
+    }
+
+    /// <summary>
     /// Called every game tick (0.6s). Override for gameplay logic.
     /// SDK Reference: Entity.tick() in Entity.ts line 92
     /// </summary>
@@ -110,47 +123,6 @@ public class Entity : MonoBehaviour
         // Override in subclasses for gameplay logic
     }
 
-    /// <summary>
-    /// Called at the START of each tick. Saves position for lerping.
-    /// SDK Reference: Matches SDK's pattern where perceivedLocation = location at tick start
-    /// </summary>
-    public void OnTickStart()
-    {
-        // FIX: Initialize lastGridPosition to current position on first tick
-        // This prevents lerping from (0,0) on spawn
-        if (!initialized)
-        {
-            lastGridPosition = gridPosition;
-            initialized = true;
-        }
-        else
-        {
-            lastGridPosition = gridPosition;
-        }
-    }
-
-    /// <summary>
-    /// Smooth visual movement between ticks.
-    /// SDK Reference: Unit.getPerceivedLocation() in Unit.ts lines 382-387
-    /// </summary>
-    void LateUpdate()
-    {
-        if (GridManager.Instance == null || WorldManager.Instance == null)
-            return;
-
-        // Don't lerp until we've had our first tick - this prevents lerping from (0,0)
-        if (!initialized)
-            return;
-
-        // Get interpolation value (0.0 to 1.0 between ticks)
-        float tickPercent = WorldManager.Instance.GetTickPercent();
-
-        // Lerp from last position to current position
-        Vector3 lastWorldPos = GridManager.Instance.GridToWorld(lastGridPosition);
-        Vector3 currentWorldPos = GridManager.Instance.GridToWorld(gridPosition);
-
-        transform.position = Vector3.Lerp(lastWorldPos, currentWorldPos, tickPercent);
-    }
 
     /// <summary>
     /// Auto-cleanup when destroyed.
