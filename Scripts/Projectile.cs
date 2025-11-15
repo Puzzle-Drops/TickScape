@@ -115,6 +115,10 @@ public class Projectile
     public int age = 0;
     public float distance;
 
+    // Separate tracking for visual and hit timing
+    public int hitDelay;          // When damage should apply (countdown)
+    public int visualTotalDelay;  // Total ticks for visual interpolation
+
     // Position tracking
     public Vector2 startLocation;
     public Vector2 currentLocation;
@@ -133,6 +137,9 @@ public class Projectile
     // Visual representation (self-managed)
     private GameObject visualInstance;
     private bool hasSpawnedVisual = false;
+
+    // Tracking
+    public bool createdThisTick = true;  // Prevents processing on creation frame
 
     /// <summary>
     /// Create a projectile.
@@ -160,8 +167,7 @@ public class Projectile
         }
 
         // Initialize start location (center of attacker's VISUAL position)
-        // CRITICAL FIX: Use perceived location so projectile spawns where attacker LOOKS
-        // SDK Reference: Projectile.ts uses entity's visual position, not grid position
+        // Using perceived location so projectile spawns where attacker LOOKS
         Vector2 fromPerceivedStart = from.GetPerceivedLocation(0);
         this.startLocation = new Vector2(
             fromPerceivedStart.x + (from.size - 1) / 2f,
@@ -215,7 +221,17 @@ public class Projectile
             this.remainingDelay = this.options.setDelay;
         }
 
-        this.totalDelay = this.remainingDelay;
+        // CRITICAL: Track hit and visual timing separately
+        // hitDelay = when damage applies (should match visual impact!)
+        // totalDelay = total lifetime including visual delay
+        // visualTotalDelay = just the travel time for interpolation
+        this.visualTotalDelay = this.remainingDelay;  // For visual interpolation
+        this.totalDelay = this.remainingDelay + this.options.visualDelayTicks;  // Total lifetime
+        this.hitDelay = this.totalDelay;  // Hit when visual journey completes!
+        this.remainingDelay = this.totalDelay;  // Countdown from total
+
+        Debug.Log($"[PROJECTILE] Created: age={age}, visualDelay={options.visualDelayTicks} ticks, " +
+                  $"travelTime={visualTotalDelay} ticks, willAppearOnAge={options.visualDelayTicks}");
 
         // Set up motion interpolator
         if (this.options.motionInterpolator != null)
@@ -315,30 +331,27 @@ public class Projectile
     /// <summary>
     /// Get interpolation percentage (0.0 to 1.0).
     /// SDK Reference: Projectile.getPercent()
-    /// 
-    /// CRITICAL FIX: Don't add tickPercent on age 0 (creation frame).
-    /// This prevents projectile from appearing partway along path when created mid-tick.
     /// </summary>
     private float GetPercent(float tickPercent)
     {
-        // On creation frame (age 0), start at 0% regardless of tickPercent
-        // This ensures projectile appears at start position
-        float effectiveTickPercent = (age == 0) ? 0f : tickPercent;
-
-        float numerator = age - options.visualDelayTicks + effectiveTickPercent;
-        float denominator = totalDelay - options.visualDelayTicks - options.visualHitEarlyTicks;
-
-        float result = numerator / denominator;
-        // CRITICAL DEBUG
-        Debug.Log($"[PROJECTILE] age={age}, tickPercent={tickPercent:F3}, " +
-                  $"totalDelay={totalDelay}, percent={result:F3}");
-
-        if (denominator <= 0 && age >= options.visualDelayTicks - 1)
+        // Not visible yet
+        if (age < options.visualDelayTicks)
         {
-            return effectiveTickPercent;
+            return 0f;
         }
 
-        return numerator / denominator;
+        // Calculate travel progress after visual delay
+        float numerator = (age - options.visualDelayTicks) + tickPercent;
+        float denominator = visualTotalDelay - options.visualHitEarlyTicks;
+
+        // Special case for instant/melee projectiles
+        if (denominator <= 0)
+        {
+            return 1f;  // Instant arrival
+        }
+
+        float result = numerator / denominator;
+        return Mathf.Clamp01(result);
     }
 
     /// <summary>
@@ -347,8 +360,15 @@ public class Projectile
     /// </summary>
     public bool IsVisible(float tickPercent)
     {
+        // Simple check: age must be >= visualDelayTicks
+        if (age < options.visualDelayTicks)
+        {
+            return false;
+        }
+
+        // Visible while traveling
         float percent = GetPercent(tickPercent);
-        return percent > 0 && percent <= 1;
+        return percent >= 0 && percent <= 1;
     }
 
     /// <summary>
@@ -357,10 +377,15 @@ public class Projectile
     /// </summary>
     public void OnTick()
     {
-        // REMOVED: currentLocation update - it conflicts with GetPerceivedLocation()
-        // The interpolation system already handles smooth movement via GetPerceivedLocation()
+        // Skip the first tick to prevent processing on creation frame
+        if (createdThisTick)
+        {
+            createdThisTick = false;
+            return;  // Don't process anything on creation tick
+        }
 
         remainingDelay--;
+        hitDelay--;
         age++;
 
         // Play projectile sound when visible
@@ -399,7 +424,9 @@ public class Projectile
     /// </summary>
     public bool ShouldDestroy()
     {
-        return age >= totalDelay + Mathf.Max(0, -options.visualHitEarlyTicks);
+        // Destroy after total lifetime (includes visual delay)
+        // Keep alive a bit longer if visualHitEarlyTicks is negative
+        return remainingDelay <= Mathf.Min(0, options.visualHitEarlyTicks);
     }
 
     /// <summary>

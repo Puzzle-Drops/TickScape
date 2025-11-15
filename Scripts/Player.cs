@@ -1079,6 +1079,10 @@ public class Player : Unit
             prayerController.Tick();
         }
 
+        // Process incoming projectiles BEFORE death check
+        // This matches how Mobs handle it in the SDK
+        ProcessIncomingAttacks();
+
         if (IsDying())
         {
             return;

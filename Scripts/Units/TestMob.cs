@@ -50,6 +50,10 @@ public class TestMob : Mob
     [Range(0.1f, 2f)]
     public float projectileSize = 0.5f;
 
+    [Tooltip("Delay before projectile appears (in ticks). 0 = appears immediately, 1 = appears next tick")]
+[Range(0, 3)]
+public int visualDelayTicks = 1;
+
     [Header("Debug Info")]
     [SerializeField] private string currentAttackStyle = "";
     [SerializeField] private bool lastAttackWasBlocked = false;
@@ -251,6 +255,10 @@ public class TestMob : Mob
 
         protected override void RegisterProjectile(Unit from, Unit to, AttackBonuses bonuses, ProjectileOptions options)
         {
+            // Get visual delay from parent TestMob
+            TestMob testMob = from as TestMob;
+            int delay = testMob != null ? testMob.visualDelayTicks : 0;
+
             // Override projectile options with our test settings
             ProjectileOptions testOptions = new ProjectileOptions
             {
@@ -259,6 +267,7 @@ public class TestMob : Mob
                 color = projectileColor,
                 size = projectileSize,
                 modelPrefab = null, // Use colored sphere
+                visualDelayTicks = delay  // Add visual delay
             };
 
             // Create projectile with "range" style
@@ -273,8 +282,10 @@ public class TestMob : Mob
 
             to.AddProjectile(projectile);
 
-            Debug.Log($"[TEST MOB] Ranged projectile created: {projectile.damage} damage, checkPrayerAtHit={checkPrayerOnHit}");
+            Debug.Log($"[TEST MOB] Ranged projectile created: {projectile.damage} damage, " +
+                      $"checkPrayerAtHit={checkPrayerOnHit}, visualDelay={delay} ticks");
         }
+
     }
 
     /// <summary>
@@ -301,6 +312,10 @@ public class TestMob : Mob
 
         protected override void RegisterProjectile(Unit from, Unit to, AttackBonuses bonuses, ProjectileOptions options)
         {
+            // Get visual delay from parent TestMob
+            TestMob testMob = from as TestMob;
+            int delay = testMob != null ? testMob.visualDelayTicks : 0;
+
             // Override projectile options with our test settings
             ProjectileOptions testOptions = new ProjectileOptions
             {
@@ -309,6 +324,7 @@ public class TestMob : Mob
                 color = projectileColor,
                 size = projectileSize,
                 modelPrefab = null, // Use colored sphere
+                visualDelayTicks = delay  // Add visual delay
             };
 
             // Create projectile with "magic" style
@@ -323,7 +339,8 @@ public class TestMob : Mob
 
             to.AddProjectile(projectile);
 
-            Debug.Log($"[TEST MOB] Magic projectile created: {projectile.damage} damage, checkPrayerAtHit={checkPrayerOnHit}");
+            Debug.Log($"[TEST MOB] Magic projectile created: {projectile.damage} damage, " +
+                      $"checkPrayerAtHit={checkPrayerOnHit}, visualDelay={delay} ticks");
         }
     }
 }

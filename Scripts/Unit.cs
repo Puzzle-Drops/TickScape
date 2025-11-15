@@ -9,6 +9,11 @@ using System.Collections.Generic;
 /// </summary>
 public abstract class Unit : Entity
 {
+
+    [Header("Visual")]
+    [Tooltip("Reference to the Visual child transform for rotation (auto-found if not set)")]
+    [SerializeField] protected Transform visualTransform;
+
     [Header("Stats")]
     [Tooltip("Base stats (never changes)")]
     public UnitStats stats;
@@ -110,6 +115,21 @@ public abstract class Unit : Entity
         // Initialize hitsplat queue
         hitsplatQueue = new List<Hitsplat>();
 
+        // Cache the Visual child transform if not already assigned
+        if (visualTransform == null)
+        {
+            visualTransform = transform.Find("Visual");
+            if (visualTransform == null)
+            {
+                // If no Visual child, we'll rotate the whole object
+                Debug.Log($"[{gameObject.name}] No 'Visual' child found, will rotate entire object");
+            }
+        }
+        else
+        {
+            Debug.Log($"[{gameObject.name}] Using manually assigned Visual transform");
+        }
+
         // ADD THIS NEW CODE:
         // Add overhead prayer renderer if this unit can pray
         // This allows both players and mobs to display overhead prayers
@@ -129,17 +149,31 @@ public abstract class Unit : Entity
 
         // Handle visual position interpolation
         Vector2 visualPos = GetPerceivedLocation(tickPercent);
+
+        // Position at CENTER of multi-tile unit for proper rotation
+        // SW corner + half size offset
+        float centerOffset = (size * GridManager.Instance.tileSize) / 2f;
         Vector3 worldPos = new Vector3(
-            visualPos.x * GridManager.Instance.tileSize,
+            (visualPos.x * GridManager.Instance.tileSize + centerOffset) - 0.5f,
             0f,
-            visualPos.y * GridManager.Instance.tileSize
+            (visualPos.y * GridManager.Instance.tileSize + centerOffset) - 0.5f
         );
         transform.position = worldPos;
 
         // Handle rotation
         float rotationRadians = GetPerceivedRotation(tickPercent);
         float rotationDegrees = rotationRadians * Mathf.Rad2Deg + 90f;
-        transform.rotation = Quaternion.Euler(0, rotationDegrees, 0);
+
+        if (visualTransform != null)
+        {
+            // Rotate only the Visual child
+            visualTransform.rotation = Quaternion.Euler(0, rotationDegrees, 0);
+        }
+        else
+        {
+            // Fallback: rotate the whole object
+            transform.rotation = Quaternion.Euler(0, rotationDegrees, 0);
+        }
     }
 
     /// <summary>
@@ -210,8 +244,7 @@ public abstract class Unit : Entity
         // Track last rotation for when we lose aggro
         lastRotation = GetPerceivedRotation(0);
 
-        // Process incoming attacks BEFORE death check
-        ProcessIncomingAttacks();
+        // DON'T process incoming attacks here - only in MovementStep!
 
         // Check for death BEFORE trying to attack
         DetectDeath();
@@ -460,9 +493,11 @@ public abstract class Unit : Entity
         {
             projectile.OnTick();
 
-            if (projectile.remainingDelay == 0)
+            // Apply damage when the visual travel is complete
+            // hitDelay counts the actual travel time (not including visual delay)
+            if (projectile.hitDelay == 0)
             {
-                // Apply damage
+                // Apply damage exactly when projectile visually hits
                 projectile.BeforeHit();
 
                 // Check if attack was cancelled (e.g., attacker died)
@@ -724,13 +759,28 @@ public abstract class Unit : Entity
     {
         if (aggro != null)
         {
-            // Face aggro target instantly
+            // Use PERCEIVED positions for smooth rotation (no snapping)
+            Vector2 myPerceivedLoc = GetPerceivedLocation(tickPercent);
             Vector2 aggroPerceivedLoc = aggro.GetPerceivedLocation(tickPercent);
+
+            // Calculate visual centers matching LateUpdate positioning logic
+            // Center offset for multi-tile units PLUS the -0.5 visual adjustment
+            float tileSize = GridManager.Instance ? GridManager.Instance.tileSize : 1f;
+            float visualOffsetInGridUnits = 0.5f / tileSize;  // Convert -0.5 world units to grid units
+
+            // My visual center position
+            float myVisualCenterX = myPerceivedLoc.x + (size / 2f) - visualOffsetInGridUnits;
+            float myVisualCenterY = myPerceivedLoc.y + (size / 2f) - visualOffsetInGridUnits;
+
+            // Target's visual center position  
+            float targetVisualCenterX = aggroPerceivedLoc.x + (aggro.size / 2f) - visualOffsetInGridUnits;
+            float targetVisualCenterY = aggroPerceivedLoc.y + (aggro.size / 2f) - visualOffsetInGridUnits;
+
             float angle = Pathing.Angle(
-                gridPosition.x + size / 2f,
-                gridPosition.y - size / 2f,
-                aggroPerceivedLoc.x + aggro.size / 2f,
-                aggroPerceivedLoc.y - aggro.size / 2f
+                myVisualCenterX,
+                myVisualCenterY,
+                targetVisualCenterX,
+                targetVisualCenterY
             );
             return -angle;  // Negate for Unity's coordinate system
         }

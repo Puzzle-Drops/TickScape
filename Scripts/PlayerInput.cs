@@ -62,20 +62,20 @@ public class PlayerInput : MonoBehaviour
         // Check if mouse is over UI
         bool mouseOverUI = UIManager.Instance != null && UIManager.Instance.IsMouseOverUI(Input.mousePosition);
 
-        // Get the clickable layer mask
-        int clickableLayer = LayerMask.NameToLayer("Clickable");
-        if (clickableLayer == -1)
+        // Get the clickable tiles layer mask
+        int tilesLayer = LayerMask.NameToLayer("Tiles");
+        if (tilesLayer == -1)
         {
-            Debug.LogError("PlayerInput: 'Clickable' layer not found! Please create it in Tags and Layers.");
+            Debug.LogError("PlayerInput: 'Tiles' layer not found! Please create it in Tags and Layers.");
             return;
         }
-        LayerMask clickableMask = 1 << clickableLayer;
+        LayerMask tilesMask = 1 << tilesLayer;
 
         // Handle mouse hover (only if not over UI)
         if (!mouseOverUI)
         {
             Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out RaycastHit hit, 100f, clickableMask))
+            if (Physics.Raycast(ray, out RaycastHit hit, 100f, tilesMask))
             {
                 Vector2Int gridPos = GridManager.Instance.WorldToGrid(hit.point);
 
@@ -131,7 +131,7 @@ public class PlayerInput : MonoBehaviour
         {
             Debug.Log("[PlayerInput] Processing click - UI check passed");
             Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-            if (Physics.Raycast(ray, out RaycastHit hit, 100f, clickableMask))
+            if (Physics.Raycast(ray, out RaycastHit hit, 100f, tilesMask))
             {
                 Vector2Int gridPos = GridManager.Instance.WorldToGrid(hit.point);
 
