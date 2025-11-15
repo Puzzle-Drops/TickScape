@@ -558,6 +558,7 @@ public class Mob : Unit
     /// 
     /// This ensures mobs ALWAYS try to close distance even if direct path is blocked.
     /// </summary>
+
     public override void MovementStep()
     {
         if (IsDying())
@@ -570,12 +571,11 @@ public class Mob : Unit
         if (age > 0)
             return;
 
-        // Save position for visual interpolation BEFORE moving
-        // SDK Reference: Mob.ts line 199 - perceivedLocation = { x: this.location.x, y: this.location.y }
+        // Save position for visual interpolation AND animation detection
+        Vector2Int previousPosition = gridPosition; // NEW: Track previous position
         perceivedLocation = new Vector2(gridPosition.x, gridPosition.y);
 
         // Update line of sight BEFORE movement (for movement decisions)
-        // SDK Reference: Mob.ts line 201
         SetHasLOS();
 
         // Check if movement is enabled
@@ -583,10 +583,10 @@ public class Mob : Unit
             return;
 
         // Don't move if can't move or no aggro
-        // SDK Reference: Mob.ts line 202
         if (!CanMove() || aggro == null)
             return;
 
+        // [ALL THE EXISTING MOVEMENT CODE STAYS THE SAME]
         // ===== STAGE 0: Get desired target tile =====
         Vector2Int targetTile = GetNextMovementStep();
 
@@ -595,7 +595,6 @@ public class Mob : Unit
         int yOff = targetTile.y - gridPosition.y;
 
         // ===== STAGE 1: Try DIAGONAL movement (both X and Y) =====
-        // SDK Reference: Mob.ts lines 209-244
         List<Vector2Int> xTiles = GetXMovementTiles(xOff, yOff);
         List<Vector2Int> yTiles = GetYMovementTiles(xOff, yOff);
 
@@ -618,7 +617,6 @@ public class Mob : Unit
         }
 
         // ===== STAGE 2: If diagonal blocked, try FALLBACK =====
-        // SDK Reference: Mob.ts lines 246-262
         if (!both)
         {
             // Try X-only movement
@@ -654,7 +652,6 @@ public class Mob : Unit
         }
 
         // ===== STAGE 3: Execute movement in valid direction(s) =====
-        // SDK Reference: Mob.ts lines 264-270
         if (both)
         {
             // Diagonal movement
@@ -682,6 +679,17 @@ public class Mob : Unit
             // All movement blocked
             if (debugMovement)
                 Debug.Log($"[MOB] {mobName} CANNOT MOVE - all directions blocked");
+        }
+
+        // NEW: Update animation based on movement
+        if (previousPosition != gridPosition)
+        {
+            UpdateMovementAnimation();
+        }
+        else if (!isAttacking && !IsDying())
+        {
+            // If we didn't move and we're not attacking or dying, play idle
+            PlayAnimation(AnimationStates.IDLE);
         }
     }
 
@@ -735,6 +743,10 @@ public class Mob : Unit
                 attackStyle = meleeStyle;
             }
         }
+
+        // NEW: Play attack animation AFTER we've determined the final attack style
+        // but BEFORE we execute the attack
+        PlayAttackAnimation(attackStyle);
 
         // Get current weapon
         if (!weapons.ContainsKey(attackStyle) || weapons[attackStyle] == null)

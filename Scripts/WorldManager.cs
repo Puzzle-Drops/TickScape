@@ -63,7 +63,16 @@ public class WorldManager : MonoBehaviour
         // Get all entities from GridManager
         var entities = GridManager.Instance.GetAllEntities();
 
-        // Phase 0 removed - Units now handle their own perceivedLocation updates
+        // ===== PHASE 0: PLAYER PRETICK (Prayers activate NOW) =====
+        // SDK Reference: World.ts line 134 - region.players.forEach((player: Player) => player.pretick());
+        // CRITICAL: This MUST happen before NPCs attack!
+        foreach (var entity in entities)
+        {
+            if (entity is Player player)
+            {
+                player.PreTick();
+            }
+        }
 
         // ===== NPCs/MOBS COMPLETE THEIR FULL CYCLE FIRST =====
         // SDK Reference: World.ts lines 127-145

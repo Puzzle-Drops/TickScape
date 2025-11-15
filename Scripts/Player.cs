@@ -1181,8 +1181,8 @@ public class Player : Unit
     {
         if (prayerController == null) return;
 
-        // Tick prayer system (handles drain)
-        prayerController.Tick();
+        // NOTE: Prayer tick now happens in PreTick() before combat
+        // Here we just handle visuals and sounds
 
         // Set overhead prayer for visual display
         Prayer overhead = prayerController.GetOverhead();
@@ -1201,6 +1201,20 @@ public class Player : Unit
                 PlayPrayerSound(prayer, true);
                 prayer.willPlayOnSound = false;
             }
+        }
+    }
+
+    /// <summary>
+    /// Called BEFORE any combat happens this tick.
+    /// SDK Reference: Player.pretick() in Player.ts line 686
+    /// </summary>
+    public void PreTick()
+    {
+        // CRITICAL: Tick prayers FIRST before anything else
+        // This transfers nextActiveState -> isActive
+        if (prayerController != null)
+        {
+            prayerController.Tick();
         }
     }
 

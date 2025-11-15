@@ -176,6 +176,24 @@ public int visualDelayTicks = 1;
     }
 
     /// <summary>
+    /// Override to support special attack animations for testing.
+    /// </summary>
+    protected override AttackAnimationType GetAttackAnimationType(string attackStyle)
+    {
+        // You can customize this for special attacks
+        // For example, if you want to test special animations:
+
+        // Example: Every 5th attack is a special
+        if (Random.Range(0, 5) == 0)
+        {
+            //return Random.Range(0, 2) == 0 ? AttackAnimationType.Special1 : AttackAnimationType.Special2;
+        }
+
+        // Otherwise use base implementation
+        return base.GetAttackAnimationType(attackStyle);
+    }
+
+    /// <summary>
     /// Override perform attack to add debug logging.
     /// </summary>
     public override void PerformAttack()

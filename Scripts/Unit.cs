@@ -10,6 +10,52 @@ using System.Collections.Generic;
 public abstract class Unit : Entity
 {
 
+    #region Animation System
+
+    /// <summary>
+    /// Animation states that match our Animator state names.
+    /// These should match EXACTLY with your Animator state names.
+    /// </summary>
+    public static class AnimationStates
+    {
+        public const string IDLE = "Idle";
+        public const string WALK = "Walk";
+        public const string DEATH = "Death";
+        public const string ATTACK_MELEE = "AttackMelee";
+        public const string ATTACK_RANGE = "AttackRange";
+        public const string ATTACK_MAGE = "AttackMage";
+        public const string ATTACK_SPECIAL1 = "AttackSpecial1";
+        public const string ATTACK_SPECIAL2 = "AttackSpecial2";
+    }
+
+    /// <summary>
+    /// Attack animation type for easy mapping.
+    /// </summary>
+    public enum AttackAnimationType
+    {
+        Melee,
+        Range,
+        Mage,
+        Special1,
+        Special2
+    }
+
+    [Header("Animation")]
+    [Tooltip("Animator component for this unit (auto-found if not set)")]
+    public Animator animator;
+
+    [Tooltip("Use animations if available, otherwise use scale pulse")]
+    public bool useAnimations = true;
+
+    [Tooltip("Current animation state for debugging")]
+    [SerializeField] private string currentAnimationState = "";
+
+    // Track if we're currently attacking (prevents animation interruption)
+    protected bool isAttacking = false;
+    protected float attackAnimationTimer = 0f;
+
+    #endregion
+
     [Header("Visual")]
     [Tooltip("Reference to the Visual child transform for rotation (auto-found if not set)")]
     [SerializeField] protected Transform visualTransform;
@@ -130,9 +176,36 @@ public abstract class Unit : Entity
             Debug.Log($"[{gameObject.name}] Using manually assigned Visual transform");
         }
 
-        // ADD THIS NEW CODE:
-        // Add overhead prayer renderer if this unit can pray
-        // This allows both players and mobs to display overhead prayers
+        // NEW: Initialize animator
+        if (animator == null)
+        {
+            // Try to find animator on this GameObject
+            animator = GetComponent<Animator>();
+
+            // If not found, try Visual child
+            if (animator == null && visualTransform != null)
+            {
+                animator = visualTransform.GetComponent<Animator>();
+            }
+
+            if (animator != null)
+            {
+                Debug.Log($"[{gameObject.name}] Found Animator component");
+            }
+            else if (useAnimations)
+            {
+                Debug.LogWarning($"[{gameObject.name}] No Animator found but useAnimations is true!");
+                useAnimations = false;
+            }
+        }
+
+        // Start with idle animation
+        if (useAnimations && animator != null)
+        {
+            PlayAnimation(AnimationStates.IDLE);
+        }
+
+        // Add renderers when ready
         StartCoroutine(AddRenderersWhenReady());
     }
 
@@ -174,6 +247,9 @@ public abstract class Unit : Entity
             // Fallback: rotate the whole object
             transform.rotation = Quaternion.Euler(0, rotationDegrees, 0);
         }
+
+        // NEW: Update animation state
+        UpdateAnimationState();
     }
 
     /// <summary>
@@ -206,6 +282,157 @@ public abstract class Unit : Entity
 
     #endregion
 
+    #region Animation Control
+
+    /// <summary>
+    /// Play an animation state. Handles transitions and state tracking.
+    /// </summary>
+    protected virtual void PlayAnimation(string stateName, bool forceRestart = false)
+    {
+        if (!useAnimations || animator == null)
+            return;
+
+        // Don't interrupt attack animations unless forced
+        if (isAttacking && !forceRestart && stateName != AnimationStates.DEATH)
+            return;
+
+        // Don't replay the same animation unless forced
+        if (currentAnimationState == stateName && !forceRestart)
+            return;
+
+        // Play the animation
+        animator.CrossFade(stateName, 0.1f); // 0.1s transition for smooth blending
+        currentAnimationState = stateName;
+
+        //Debug.Log($"[{UnitName()}] Playing animation: {stateName}");
+    }
+
+    /// <summary>
+    /// Determine which attack animation to play based on attack style.
+    /// Override this in Mob subclasses for custom behavior.
+    /// </summary>
+    protected virtual AttackAnimationType GetAttackAnimationType(string attackStyle)
+    {
+        // Map attack styles to animation types
+        // These match the SDK attack styles
+
+        // Melee styles
+        if (attackStyle == "slash" || attackStyle == "crush" || attackStyle == "stab")
+            return AttackAnimationType.Melee;
+
+        // Ranged style
+        if (attackStyle == "range")
+            return AttackAnimationType.Range;
+
+        // Magic style
+        if (attackStyle == "magic")
+            return AttackAnimationType.Mage;
+
+        // Default to melee for unknown styles
+        Debug.LogWarning($"[{UnitName()}] Unknown attack style: {attackStyle}, defaulting to melee");
+        return AttackAnimationType.Melee;
+    }
+
+    /// <summary>
+    /// Get the animation state name for an attack type.
+    /// Override this to customize animation mapping.
+    /// </summary>
+    protected virtual string GetAttackAnimationState(AttackAnimationType type)
+    {
+        switch (type)
+        {
+            case AttackAnimationType.Melee:
+                return AnimationStates.ATTACK_MELEE;
+            case AttackAnimationType.Range:
+                return AnimationStates.ATTACK_RANGE;
+            case AttackAnimationType.Mage:
+                return AnimationStates.ATTACK_MAGE;
+            case AttackAnimationType.Special1:
+                return AnimationStates.ATTACK_SPECIAL1;
+            case AttackAnimationType.Special2:
+                return AnimationStates.ATTACK_SPECIAL2;
+            default:
+                return AnimationStates.ATTACK_MELEE;
+        }
+    }
+
+    /// <summary>
+    /// Play attack animation based on current attack style.
+    /// Called when unit attacks.
+    /// </summary>
+    protected virtual void PlayAttackAnimation(string attackStyle)
+    {
+        if (!useAnimations || animator == null)
+        {
+            // Fallback to scale pulse
+            StartAttackAnimation();
+            return;
+        }
+
+        // Determine animation type
+        AttackAnimationType animType = GetAttackAnimationType(attackStyle);
+        string animState = GetAttackAnimationState(animType);
+
+        // Play the animation
+        PlayAnimation(animState, true); // Force restart for attacks
+
+        // Mark as attacking (prevents interruption)
+        isAttacking = true;
+        attackAnimationTimer = 0.6f; // One game tick for attack animations
+    }
+
+    /// <summary>
+    /// Update animation based on movement state.
+    /// Called after movement in MovementStep.
+    /// </summary>
+    protected virtual void UpdateMovementAnimation()
+    {
+        if (!useAnimations || animator == null)
+            return;
+
+        // Don't change animation if attacking or dying
+        if (isAttacking || IsDying())
+            return;
+
+        // Check if we moved this tick by comparing perceived location
+        bool isMoving = Vector2.Distance(perceivedLocation, new Vector2(gridPosition.x, gridPosition.y)) > 0.01f;
+
+        if (isMoving)
+        {
+            PlayAnimation(AnimationStates.WALK);
+        }
+        else
+        {
+            PlayAnimation(AnimationStates.IDLE);
+        }
+    }
+
+    /// <summary>
+    /// Update animation timers and states.
+    /// </summary>
+    protected virtual void UpdateAnimationState()
+    {
+        if (!useAnimations || animator == null)
+            return;
+
+        // Update attack animation timer
+        if (isAttacking)
+        {
+            attackAnimationTimer -= Time.deltaTime;
+            if (attackAnimationTimer <= 0)
+            {
+                isAttacking = false;
+                // Return to idle after attack
+                if (!IsDying())
+                {
+                    PlayAnimation(AnimationStates.IDLE);
+                }
+            }
+        }
+    }
+
+    #endregion
+
     #region Tick System (SDK: Unit.ts lines 260-268)
 
     /// <summary>
@@ -227,7 +454,16 @@ public abstract class Unit : Entity
     /// </summary>
     public virtual void MovementStep()
     {
-        // Override in subclasses for movement logic
+        // Store previous position for animation detection
+        Vector2Int previousPosition = gridPosition;
+
+        // Base implementation - override in subclasses for actual movement
+
+        // After movement (in subclasses), update animation
+        if (previousPosition != gridPosition)
+        {
+            UpdateMovementAnimation();
+        }
     }
 
     /// <summary>
@@ -394,9 +630,6 @@ public abstract class Unit : Entity
     public void DidAttack()
     {
         attackDelay = GetAttackSpeed();
-
-        // Trigger attack animation (scale pulse)
-        StartAttackAnimation();
     }
 
     /// <summary>
@@ -650,6 +883,12 @@ public abstract class Unit : Entity
         aggro = null;
 
         Debug.Log($"{gameObject.name} has died!");
+
+        // Play death animation
+        if (useAnimations && animator != null)
+        {
+            PlayAnimation(AnimationStates.DEATH, true);
+        }
     }
 
     /// <summary>

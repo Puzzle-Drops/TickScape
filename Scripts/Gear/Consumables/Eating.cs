@@ -184,7 +184,7 @@ public class Eating
         // Check if can combo eat
         if (!CanEatComboFood())
         {
-            Debug.LogWarning("[EATING] Cannot combo eat yet - combo delay active");
+            //Debug.LogWarning("[EATING] Cannot combo eat yet - combo delay active");
             return;
         }
 
@@ -200,6 +200,6 @@ public class Eating
             currentComboFood.ConsumeItem(player);
         }
 
-        Debug.Log($"[EATING] Queued combo food: Octbwan");
+        //Debug.Log($"[EATING] Queued combo food: Octbwan");
     }
 }

@@ -69,6 +69,6 @@ public class Food : Item
             );
         }
 
-        Debug.Log($"[FOOD] Ate {itemName}, healed {healAmount} HP. Current: {player.currentStats.hitpoint}/{player.stats.hitpoint}");
+        //Debug.Log($"[FOOD] Ate {itemName}, healed {healAmount} HP. Current: {player.currentStats.hitpoint}/{player.stats.hitpoint}");
     }
 }
