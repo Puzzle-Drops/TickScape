@@ -328,6 +328,11 @@ public class Projectile
         float numerator = age - options.visualDelayTicks + effectiveTickPercent;
         float denominator = totalDelay - options.visualDelayTicks - options.visualHitEarlyTicks;
 
+        float result = numerator / denominator;
+        // CRITICAL DEBUG
+        Debug.Log($"[PROJECTILE] age={age}, tickPercent={tickPercent:F3}, " +
+                  $"totalDelay={totalDelay}, percent={result:F3}");
+
         if (denominator <= 0 && age >= options.visualDelayTicks - 1)
         {
             return effectiveTickPercent;
